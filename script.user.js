@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      3.0.5
+// @version      3.0.6
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -1489,7 +1489,6 @@
                     return;
                 }
 
-                // Wykryj aktualny świat
                 const currentChar = this.characters.find(c => c.id === this.currentCharacterId);
                 this.currentWorld = currentChar?.world_name || 'retro';
 
@@ -4155,7 +4154,6 @@
                 panel.style.top = savedPos.top + 'px';
                 panel.style.left = savedPos.left + 'px';
             } else {
-                // Centruj tylko przy pierwszym otwarciu
                 panel.style.top = '50%';
                 panel.style.left = '50%';
                 panel.style.transform = 'translate(-50%, -50%)';
@@ -4223,6 +4221,7 @@
 
             leftSide.appendChild(icon);
             leftSide.appendChild(title);
+            leftSide.appendChild(credits);
 
             const closeBtn = document.createElement('button');
             closeBtn.textContent = '✖';
@@ -4463,7 +4462,6 @@
                 fontFamily: 'times-new-roman'
             });
 
-            // Wycentruj popup
             popup.style.top = '50%';
             popup.style.left = '50%';
             popup.style.transform = 'translate(-50%, -50%)';
@@ -4755,7 +4753,7 @@
             let startX, startY;
             let initialLeft, initialTop;
 
-            const header = el.querySelector('div'); // header element
+            const header = el.querySelector('div');
 
             header.addEventListener('mousedown', (e) => {
                 if (e.target.tagName === 'BUTTON' ||
@@ -4767,7 +4765,6 @@
                 startX = e.clientX;
                 startY = e.clientY;
 
-                // Usuń transform i pobierz aktualne pozycje
                 const rect = el.getBoundingClientRect();
                 el.style.transform = 'none';
                 el.style.left = rect.left + 'px';
@@ -4795,7 +4792,6 @@
                     isDragging = false;
                     header.style.cursor = 'grab';
 
-                    // Zapisz pozycję dla głównego panelu
                     if (el.id === 'addon-panel') {
                         localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
                             top: parseInt(el.style.top),
@@ -4811,7 +4807,7 @@
             let startX, startY;
             let initialLeft, initialTop;
 
-            const header = el.querySelector('div'); // header element
+            const header = el.querySelector('div');
 
             header.addEventListener('mousedown', (e) => {
                 if (e.target.tagName === 'BUTTON' ||
@@ -4822,8 +4818,6 @@
                 isDragging = true;
                 startX = e.clientX;
                 startY = e.clientY;
-
-                // Usuń transform i pobierz aktualne pozycje
                 const rect = el.getBoundingClientRect();
                 el.style.transform = 'none';
                 el.style.left = rect.left + 'px';
