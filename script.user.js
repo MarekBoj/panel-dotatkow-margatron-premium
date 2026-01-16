@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      3.0.6
+// @version      3.0.7
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -120,6 +120,7 @@
                     'https://i.imgur.com/zvVWQaY.png',
                     'https://i.imgur.com/cUTbXHW.png',
                     'https://i.imgur.com/PN7M0jC.png',
+                    'https://imgur.com/CI15o3m.png',
                     'https://imgur.com/9HISvJE.png'
                 ],
                 ON: [
@@ -130,6 +131,7 @@
                     'https://i.imgur.com/F9MmVRl.png',
                     'https://i.imgur.com/RIYmqMj.png',
                     'https://i.imgur.com/9GQvZe3.png',
+                    'https://imgur.com/oyvgiSQ.png',
                     'https://imgur.com/9HISvJE.png'
                 ]
             }
@@ -542,6 +544,11 @@
 
             try {
                 const data = await GraphQLManager.query(this.ITEMS_QUERY);
+                if (data.itemsOnMap.length == 0) {
+                    this.renderStatus('Brak przedmiotów na mapie');
+                    return
+                }
+
                 if (data.itemsOnMap.length == this.items.length) return;
                 console.log('[ItemsOnMap] Na mapie jest przedmiotów:', data.itemsOnMap?.length || 0);
                 this.items = data.itemsOnMap || [];
@@ -951,6 +958,11 @@
 
             try {
                 const data = await GraphQLManager.query(this.OTHERS_QUERY);
+                if (data.others.length == 0) {
+                    this.renderStatus('Brak graczy na mapie');
+                    return
+                }
+
                 if (data.others?.length === this.others.length) return;
                 console.log('[PlayersOnMap] Otrzymano graczy:', data.others?.length || 0);
                 this.others = data.others || [];
@@ -1671,12 +1683,8 @@
                 paddingTop: '20px'
             });
 
-            if (this.currentCharacterId === character.id) {
-                container.style.boxShadow = '0 0 12px rgba(76,175,80,0.5)';
-            }
-
             const professionIcon = document.createElement('img');
-            professionIcon.src = this.PROFFESIONS_ICON[character.profession] || this.PROFFESIONS_ICON['w'];
+            professionIcon.src = this.PROFFESIONS_ICON[character.profession];
             Object.assign(professionIcon.style, {
                 position: 'absolute',
                 top: '4px',
@@ -2660,7 +2668,8 @@
             { id: 'hotkeys-disablemessage', var: 'disablemessage', idx: 4, gmKey: 'disableMessages', addon: 'hotKeysEnabled' },
             { id: 'hotkeys-lootfilter', var: 'lootfilter', idx: 5, gmKey: 'lootFilterDisable', addon: 'autoLootEnabled', hasSettings: true },
             { id: 'hotkeys-agressive', var: 'agressive', idx: 6, gmKey: 'autoAgressiveDisable', addon: 'autoAgressiveEnabled' },
-            { id: 'hotkeys-killcounter', var: 'killcounter', idx: 7, gmKey: 'killCounterPanelOpen', addon: 'killCounterEnabled', hasSettings: true }
+            { id: 'hotkeys-AutoSeller', var: 'autoSeller', idx: 7, gmKey: 'autoSellerDisabled', addod: 'autoSellerEnabled', hasSettings: true},
+            { id: 'hotkeys-killcounter', var: 'killcounter', idx: 8, gmKey: 'killCounterPanelOpen', addon: 'killCounterEnabled'}
         ],
 
         init() {
@@ -3012,7 +3021,7 @@
                 padding: '4px'
             });
 
-            compactBtn.title = 'smallMode';
+            compactBtn.title = 'Tryb Uproszczony/Szczegółowy';
 
             compactBtn.addEventListener('click', () => {
                 this.compactMode = !this.compactMode;
@@ -3092,13 +3101,17 @@
                     time = baseTime * 1.25;
                     return { minTime: Math.round(time), maxTime: Math.round(time + 107) };
 
-                case 'HERO':
+                case 'HERO': {
+                    const lvlNum = parseInt(level);
                     if (mobName === 'Biała Dama') {
-                        return { minTime: 2300, maxTime: 4100 };
+                        return { minTime: 2300 / 60, maxTime: 4100 / 60 };
                     }
-                    minTime = Math.max(69 * 60, Math.round((60 + lvl * 0.45) * 60));
-                    maxTime = Math.max(120 * 60, Math.round((110 + lvl * 0.5) * 60));
+
+                    const minTime = Math.round(70 + 0.03 * Math.pow(lvlNum, 1.9));
+                    const maxTime = Math.round(minTime + 0.6 * Math.pow(lvlNum, 1.5));
+
                     return { minTime, maxTime };
+                }
 
                 case 'TITAN':
                     minTime = 2664 + (lvl - 70) * (4325 - 2664) / (177 - 70);
@@ -3253,7 +3266,6 @@
             if (minDiff > 0) {
                 time.textContent = formatTime(minDiff);
                 time.style.color = '#a0a0a0';
-
                 const percentRemaining = minDiff / totalTime;
                 if (percentRemaining <= 0.1) {
                     time.textContent = formatTime(minDiff);
@@ -3980,6 +3992,7 @@
         },
 
         moveItems() {
+            if (!GM_getValue('autoSellerDisabled', false)) return;
             const sellRarityItems = GM_getValue('sellRarityItems', false);
             const sellConsumables = GM_getValue('sellConsumablesItems', false);
             const items = document.querySelectorAll('#bag .items .item');
@@ -4209,14 +4222,12 @@
 
             const version = GM_info.script.version;
             const credits = document.createElement('span');
-            credits.textContent = `${version} v. Autor: DrMan(dupa)`;
+            credits.textContent = `${version}v | By DrMan`;
             Object.assign(credits.style, {
-                position: 'fixed',
-                top: '10px',
-                right: '10px',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: '#fff'
+                marginLeft: '40px',
+                fontSize: '12px',
+                textAlign: 'center',
+                color: '#a0a0a0'
             });
 
             leftSide.appendChild(icon);
