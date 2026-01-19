@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      3.0.7
+// @version      3.2.2
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -57,10 +57,10 @@
             const token = unsafeWindow.__AUTH_TOKEN__;
             if (token) {
                 clearInterval(interval);
-                console.log('[Userscript] Token gotowy:', token);
+                console.log('[AuthTokenFetch] Token gotowy:', token);
                 authToken = token;
             }
-        }, 500);
+        }, 100);
     }
 
     waitForToken();
@@ -120,8 +120,9 @@
                     'https://i.imgur.com/zvVWQaY.png',
                     'https://i.imgur.com/cUTbXHW.png',
                     'https://i.imgur.com/PN7M0jC.png',
+                    'https://imgur.com/qXsCrvP.png',
                     'https://imgur.com/CI15o3m.png',
-                    'https://imgur.com/9HISvJE.png'
+                    'https://imgur.com/9HISvJE.png',
                 ],
                 ON: [
                     'https://i.imgur.com/aLIJ57i.png',
@@ -131,8 +132,9 @@
                     'https://i.imgur.com/F9MmVRl.png',
                     'https://i.imgur.com/RIYmqMj.png',
                     'https://i.imgur.com/9GQvZe3.png',
+                    'https://imgur.com/T7Km6GJ.png',
                     'https://imgur.com/oyvgiSQ.png',
-                    'https://imgur.com/9HISvJE.png'
+                    'https://imgur.com/9HISvJE.png',
                 ]
             }
         },
@@ -150,9 +152,127 @@
                 ELITE: 'Elita'
             }
         },
+        MONSTERS: [
+            { name: 'Czarna Wilczyca', lvl: '20', rank: 'ELITE' },
+            { name: 'Astratus', lvl: '22', rank: 'ELITE' },
+            { name: 'Kotołak Tropiciel', lvl: '23', rank: 'ELITE' },
+            { name: 'Władca rzek', lvl: '37', rank: 'ELITE_II' },
+            { name: 'Razuglag Oklash', lvl: '47', rank: 'ELITE_II' },
+            { name: 'Goplana', lvl: '75', rank: 'ELITE_II' },
+            { name: 'Mroczny Patryk', lvl: '35', rank: 'HERO' },
+            { name: 'Lisz', lvl: '60', rank: 'ELITE' },
+            { name: 'Vonaros', lvl: '60', rank: 'ELITE' },
+            { name: 'Wilcza Paszcza', lvl: '48', rank: 'ELITE' },
+            { name: 'Gnom Figlid', lvl: '48', rank: 'ELITE' },
+            { name: 'Krogor', lvl: '48', rank: 'ELITE' },
+            { name: 'Thowar', lvl: '47', rank: 'ELITE' },
+            { name: 'Wilcza Jagoda', lvl: '47', rank: 'ELITE' },
+            { name: 'Tollok Shimger', lvl: '43', rank: 'ELITE' },
+            { name: 'Herszt rozbójników', lvl: '37', rank: 'ELITE' },
+            { name: 'Mula Furla', lvl: '34', rank: 'ELITE' },
+            { name: 'Cerber', lvl: '28', rank: 'ELITE' },
+            { name: 'Paladyński Apostata', lvl: '25', rank: 'ELITE' },
+            { name: 'Astaratus', lvl: '22', rank: 'ELITE' },
+            { name: 'Szczęt alias Gładki', lvl: '47', rank: 'ELITE_II' },
+            { name: 'Tarmus Wuden', lvl: '50', rank: 'ELITE_II' },
+            { name: 'Tollok Atamatu', lvl: '73', rank: 'ELITE_II' },
+            { name: 'Tollok Utumutu', lvl: '73', rank: 'ELITE_II' },
+            { name: 'Wyznawca ciemnych mocy', lvl: '82', rank: 'ELITE_II' },
+            { name: 'Mazurnik Przybrzeżny', lvl: '82', rank: 'ELITE_II' },
+            { name: 'Łowca czaszek', lvl: '84', rank: 'ELITE_II' },
+            { name: 'Grabarz świątynny', lvl: '88', rank: 'ELITE_II' },
+            { name: 'Podły zbrojmistrz', lvl: '89', rank: 'ELITE_II' },
+            { name: 'Nieumarły krzyżowiec', lvl: '92', rank: 'ELITE_II' },
+            { name: 'Szkielet władcy żywiołów', lvl: '92', rank: 'ELITE_II' },
+            { name: 'Morthen', lvl: '96', rank: 'ELITE_II' },
+            { name: 'Miłośnik Łowców', lvl: '108', rank: 'ELITE_II' },
+            { name: 'Miłośnik Rycerzy', lvl: '108', rank: 'ELITE_II' },
+            { name: 'Miłośnik Magii', lvl: '108', rank: 'ELITE_II' },
+            { name: 'Wójt Fistuła', lvl: '118', rank: 'ELITE_II' },
+            { name: 'Krab pustelnik', lvl: '123', rank: 'ELITE_II' },
+            { name: 'Królowa śniegu', lvl: '124', rank: 'ELITE_II' },
+            { name: 'Teściowa Rumcajsa', lvl: '125', rank: 'ELITE_II' },
+            { name: 'Poskramiacz Hydr', lvl: '128', rank: 'ELITE_II' },
+            { name: 'Pogromczyni Mantikor', lvl: '128', rank: 'ELITE_II' },
+            { name: 'Pogromca gryfów', lvl: '128', rank: 'ELITE_II' },
+            { name: 'Burkog Lorulk', lvl: '135', rank: 'ELITE_II' },
+            { name: 'Jertek Moxos', lvl: '136', rank: 'ELITE_II' },
+            { name: 'Berserker Amuno', lvl: '139', rank: 'ELITE_II' },
+            { name: 'Fodug Zolash', lvl: '145', rank: 'ELITE_II' },
+            { name: 'Mistrz Worundriel', lvl: '148', rank: 'ELITE_II' },
+            { name: 'Goons Asterus', lvl: '150', rank: 'ELITE_II' },
+            { name: 'Adariel', lvl: '155', rank: 'ELITE_II' },
+            { name: 'Duch władcy klanów', lvl: '160', rank: 'ELITE_II' },
+            { name: 'Ogr Stalowy Pazur', lvl: '164', rank: 'ELITE_II' },
+            { name: 'Fursharag pożeracz umysłów', lvl: '170', rank: 'ELITE_II' },
+            { name: 'Ziuggrael strażnik królowej', lvl: '170', rank: 'ELITE_II' },
+            { name: 'Bragarth myśliwy dusz', lvl: '170', rank: 'ELITE_II' },
+            { name: 'Lusgrathera królowa pramatka', lvl: '175', rank: 'ELITE_II' },
+            { name: 'Borgoros Garamir III', lvl: '175', rank: 'ELITE_II' },
+            { name: 'Chryzoprenia', lvl: '178', rank: 'ELITE_II' },
+            { name: 'Czempion Furboli', lvl: '183', rank: 'ELITE_II' },
+            { name: 'Torunia Ankelwald', lvl: '186', rank: 'ELITE_II' },
+            { name: 'Breheret żelazny łeb', lvl: '192', rank: 'ELITE_II' },
+            { name: 'Mysiur myświórowy król', lvl: '193', rank: 'ELITE_II' },
+            { name: 'Sadolia nadzorczyni Hurys', lvl: '197', rank: 'ELITE_II' },
+            { name: 'Bergermona krwawa hrabina', lvl: '200', rank: 'ELITE_II' },
+            { name: 'Sataniel skrytobójca', lvl: '200', rank: 'ELITE_II' },
+            { name: 'Annaniel wysysacz marzeń', lvl: '200', rank: 'ELITE_II' },
+            { name: 'Gothardus kolekcjoner głów', lvl: '200', rank: 'ELITE_II' },
+            { name: 'Zufulus smakosz serc', lvl: '205', rank: 'ELITE_II' },
+            { name: 'Arachniregina Colosseus', lvl: '220', rank: 'ELITE_II' },
+            { name: 'Mocny Maddoks', lvl: '235', rank: 'ELITE_II' },
+            { name: 'Cuaitl Citlalin', lvl: '250', rank: 'ELITE_II' },
+            { name: 'Quetzalcoatl', lvl: '260', rank: 'ELITE_II' },
+            { name: 'Neferkar Set', lvl: '274', rank: 'ELITE_II' },
+            { name: 'Nymphemonia', lvl: '287', rank: 'ELITE_II' },
+            { name: 'Zorin', lvl: '300', rank: 'ELITE_II' },
+            { name: 'Furion', lvl: '300', rank: 'ELITE_II' },
+            { name: 'Artenius', lvl: '300', rank: 'ELITE_II' },
+            { name: 'Domina Ecclesiae', lvl: '21', rank: 'HERO' },
+            { name: 'Mietek Żul', lvl: '25', rank: 'HERO' },
+            { name: 'Karmazynowy Mściciel', lvl: '45', rank: 'HERO' },
+            { name: 'Złodziej', lvl: '50', rank: 'HERO' },
+            { name: 'Zły Przewodnik', lvl: '63', rank: 'HERO' },
+            { name: 'Piekielny Kościej', lvl: '74', rank: 'HERO' },
+            { name: 'Opętany Paladyn', lvl: '85', rank: 'HERO' },
+            { name: 'Kochanka Nocy', lvl: '100', rank: 'HERO' },
+            { name: 'Perski Książę', lvl: '116', rank: 'HERO' },
+            { name: 'Baca Bez Łowiec', lvl: '123', rank: 'HERO' },
+            { name: 'Obłąkany łowca orków', lvl: '144', rank: 'HERO' },
+            { name: 'Czarująca Atalia', lvl: '157', rank: 'HERO' },
+            { name: 'Święty Braciszek', lvl: '165', rank: 'HERO' },
+            { name: 'Viviana Nandin', lvl: '184', rank: 'HERO' },
+            { name: 'Demonis Pan Nicości', lvl: '210', rank: 'HERO' },
+            { name: 'Tepeyollotl', lvl: '260', rank: 'HERO' },
+            { name: 'Dziewicza Orlica', lvl: '51', rank: 'TITAN' },
+            { name: 'Zabójczy królik', lvl: '70', rank: 'TITAN' },
+            { name: 'Renegat Baulus', lvl: '101', rank: 'TITAN' },
+            { name: 'Piekielny Arcymag', lvl: '131', rank: 'TITAN' },
+            { name: 'Versus Zoons', lvl: '154', rank: 'TITAN' },
+            { name: 'Łowczyni Wspomnień', lvl: '177', rank: 'TITAN' },
+            { name: 'Przyzywacz demonów', lvl: '204', rank: 'TITAN' },
+            { name: 'Maddok Magua', lvl: '231', rank: 'TITAN' },
+            { name: 'Tezcatlipoca', lvl: '258', rank: 'TITAN' },
+            { name: 'Tanroth', lvl: '285', rank: 'TITAN' },
+            { name: 'Biała Dama', lvl: '40', rank: 'HERO' },
+            { name: 'Zjawa Pustej Maski', lvl: '43', rank: 'ELITE_II' },
+            { name: 'Karnawałowa Piękność', lvl: '35', rank: 'ELITE' },
+            { name: 'Dowódca Ghuli', lvl: '45', rank: 'ELITE' },
+            { name: 'Łowca skór', lvl: '81', rank: 'ELITE' },
+            { name: 'Zarządca magazynu', lvl: '82', rank: 'ELITE' },
+            { name: 'Szalony miś', lvl: '115', rank: 'ELITE' },
+            { name: 'Zabalsamowany wyznawca Seta', lvl: '118', rank: 'ELITE' },
+            { name: 'Cheperu', lvl: '114', rank: 'ELITE' },
+            { name: 'Henry Kaprawe Oko', lvl: '114', rank: 'ELITE' },
+            { name: 'Marid', lvl: '120', rank: 'ELITE' },
+            { name: 'Szkielet bosmana', lvl: '130', rank: 'ELITE' },
+            { name: 'Monstrum z Bremus An', lvl: '85', rank: 'ELITE' }
+        ],
         API: {
             CHARACTERS: 'https://margatron.ovh/game/api/characters',
-            JOIN: 'https://margatron.ovh/game/api/characters/join'
+            JOIN: 'https://margatron.ovh/game/api/characters/join',
+            CURRENTCHARACTER: 'https://margatron.ovh/game-credentials',
         },
     };
 
@@ -324,11 +444,898 @@
         }
     };
 
+    // ======================== BATTLE MONITOR ========================
+
+    const BattleMonitor = {
+        currentBattleMobs: [],
+        inBattle: false,
+        subscribers: new Set(),
+
+        subscribe(callback) {
+            this.subscribers.add(callback);
+        },
+
+        unsubscribe(callback) {
+            this.subscribers.delete(callback);
+        },
+
+        notifySubscribers(event, data) {
+            this.subscribers.forEach(callback => {
+                try {
+                    callback(event, data);
+                } catch (e) {
+                    console.error('[BattleMonitor] Błąd w subscriber:', e);
+                }
+            });
+        },
+
+        getMobInfo(mobName) {
+            const normalized = mobName
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim();
+
+            const found = CONFIG.MONSTERS.find(m => {
+                const monsterNormalized = m.name
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .trim();
+
+                return normalized.includes(monsterNormalized) || monsterNormalized.includes(normalized);
+            });
+
+            return found || { lvl: '??', rank: 'UNKNOWN' };
+        },
+
+        async imageToBase64(imgUrl) {
+            try {
+                const response = await fetch(imgUrl);
+                const blob = await response.blob();
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            } catch (e) {
+                console.log('[BattleMonitor] Błąd konwersji obrazu:', e);
+                return null;
+            }
+        },
+
+        startMonitoring() {
+            intervalManager.set('battleMonitor', () => this.checkBattle(), 100);
+            console.log('[BattleMonitor] Monitoring rozpoczęty');
+        },
+
+        stopMonitoring() {
+            intervalManager.clear('battleMonitor');
+            this.currentBattleMobs = [];
+            this.inBattle = false;
+            console.log('[BattleMonitor] Monitoring zatrzymany');
+        },
+
+        checkBattle() {
+            const battleWindow = document.querySelector('.battle-window');
+
+            if (battleWindow && !this.inBattle) {
+                this.inBattle = true;
+                console.log('[BattleMonitor] Walka rozpoczęta');
+                this.notifySubscribers('battleStart', null);
+                setTimeout(() => this.captureMobData(), 100);
+            } else if (!battleWindow && this.inBattle) {
+                this.inBattle = false;
+                console.log('[BattleMonitor] Walka zakończona');
+                setTimeout(() => this.checkBattleResult(), 500);
+            }
+        },
+
+        async captureMobData() {
+            const battleWindow = document.querySelector('.battle-window');
+            if (!battleWindow) return;
+
+            this.currentBattleMobs = [];
+            const opponentDivs = battleWindow.querySelectorAll('.opponent');
+
+            console.log(`[BattleMonitor] Znaleziono ${opponentDivs.length} przeciwników`);
+
+            for (const opponentDiv of opponentDivs) {
+                let mobName = null;
+                let mobLevel = '??';
+                let mobImage = null;
+
+                const imgElement = opponentDiv.querySelector('img');
+                if (imgElement) {
+                    mobImage = imgElement.src || imgElement.getAttribute('data-src');
+
+                    const altText = imgElement.getAttribute('alt');
+                    if (altText) {
+                        mobName = altText
+                            .replace(/&lt;br&gt;/g, ' ')
+                            .replace(/<br>/g, ' ')
+                            .replace(/\s+/g, ' ')
+                            .trim()
+                            .replace(/\d+%/, '')
+                            .trim();
+                    }
+
+                    const dataHtml = imgElement.getAttribute('data-html');
+                    if (dataHtml && !mobName) {
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = dataHtml;
+                        mobName = tempDiv.textContent.trim();
+                    }
+                }
+
+                const dataNpc = opponentDiv.getAttribute('data-npc');
+                if (dataNpc) {
+                    try {
+                        const data = JSON.parse(dataNpc);
+                        mobLevel = data?.schema?.inner?.lvl || '??';
+
+                        if (!mobName) {
+                            mobName = data?.schema?.inner?.name
+                            || data?.schema?.name
+                            || data?.npc?.name
+                            || data?.name;
+                        }
+                    } catch (e) {
+                        console.log('[BattleMonitor] Błąd parsowania data-npc:', e);
+                    }
+                }
+
+                if (!mobName) {
+                    console.log('[BattleMonitor] Pominięto moba bez nazwy');
+                    continue;
+                }
+
+                mobName = mobName
+                    .replace(/\d+%/g, '')
+                    .replace(/\[.*?\]/g, '')
+                    .trim();
+
+                const mobInfo = this.getMobInfo(mobName);
+                if (mobInfo.rank === 'UNKNOWN') {
+                    console.log('[BattleMonitor] Pominięto moba spoza listy:', mobName);
+                    continue;
+                }
+
+                let imageBase64 = null;
+                if (mobImage) {
+                    imageBase64 = await this.imageToBase64(mobImage);
+                }
+
+                const mobData = {
+                    name: mobName,
+                    level: mobInfo.lvl || mobLevel,
+                    rank: mobInfo.rank,
+                    image: imageBase64,
+                    lootedItems: []
+                };
+
+                this.currentBattleMobs.push(mobData);
+            }
+
+            console.log(`[BattleMonitor] Przechwycono ${this.currentBattleMobs.length} mobów:`, this.currentBattleMobs);
+            this.notifySubscribers('mobsDetected', this.currentBattleMobs);
+        },
+
+        checkBattleResult() {
+            if (this.currentBattleMobs.length === 0) {
+                console.log('[BattleMonitor] Brak danych o mobách');
+                return;
+            }
+
+            const isDead = document.querySelector('#game-map-window .dazed');
+
+            if (!isDead) {
+                console.log('[BattleMonitor] Wygrana walka - powiadamianie subskrybentów');
+                setTimeout(() => {
+                    this.countLoot();
+                    this.notifySubscribers('battleWon', this.currentBattleMobs);
+                    this.currentBattleMobs = [];
+                }, 20);
+            } else {
+                console.log('[BattleMonitor] Przegrana walka - czyszczenie danych');
+                this.notifySubscribers('battleLost', null);
+                this.currentBattleMobs = [];
+            }
+        },
+
+        countLoot() {
+            if (this.currentBattleMobs.length === 0) return;
+
+            const lootsWindow = document.querySelector('#loots');
+            if (!lootsWindow) {
+                console.log('[BattleMonitor] Brak okna łupów');
+                return;
+            }
+
+            const lootItems = lootsWindow.querySelectorAll('.loot-wrapper [data-item]');
+            console.log(`[BattleMonitor] Znaleziono ${lootItems.length} przedmiotów w łupach`);
+
+            const collectedLoots = [];
+            lootItems.forEach(item => {
+                const data = Utils.parseItemData(item);
+                if (!data) return;
+
+                const rarity = data.schema?.inner?.rarity?.toLowerCase();
+                if (rarity === 'unique' || rarity === 'heroic' || rarity === 'legendary') {
+                    collectedLoots.push(rarity);
+                    console.log('[BattleMonitor] Znaleziono rzadki przedmiot:', rarity);
+                }
+            });
+
+            if (this.currentBattleMobs.length > 0) {
+                collectedLoots.forEach((loot, index) => {
+                    const mobIndex = index % this.currentBattleMobs.length;
+                    this.currentBattleMobs[mobIndex].lootedItems.push(loot);
+                });
+            }
+
+            console.log('[BattleMonitor] Looty przypisane do mobów:', this.currentBattleMobs);
+        }
+    };
+
+    // ======================== AUCTION HELPER ========================
+    const AuctionHelper = {
+        observer: null,
+
+        toggle(enabled) {
+            GM_setValue('auctionHelperEnabled', enabled);
+            if (enabled) {
+                this.startWatching();
+            } else {
+                this.stopWatching();
+            }
+        },
+
+        startWatching() {
+            this.observer = new MutationObserver(() => {
+                const auctionDialog = document.querySelector('[data-v-21c37600].create-auction');
+                if (auctionDialog && !auctionDialog.dataset.auctionHelperProcessed) {
+                    this.fillAuctionForm(auctionDialog);
+                }
+            });
+
+            this.observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+
+            const existingDialog = document.querySelector('[data-v-21c37600].create-auction');
+            if (existingDialog && !existingDialog.dataset.auctionHelperProcessed) {
+                this.fillAuctionForm(existingDialog);
+            }
+        },
+
+        stopWatching() {
+            if (this.observer) {
+                this.observer.disconnect();
+                this.observer = null;
+            }
+        },
+
+        fillAuctionForm(dialog) {
+            dialog.dataset.auctionHelperProcessed = 'true';
+
+            const auctionPrice = GM_getValue('auctionHelperPrice', '1');
+            const buyNowPrice = GM_getValue('auctionHelperBuyNow', '1');
+            const duration = GM_getValue('auctionHelperDuration', '1');
+            const autoSubmit = GM_getValue('auctionHelperAutoSubmit', false);
+
+            setTimeout(() => {
+                const auctionInput = dialog.querySelector('#auction-price');
+                if (auctionInput) {
+                    auctionInput.value = auctionPrice;
+                    auctionInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    auctionInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+
+                const buyNowInput = dialog.querySelector('#buy-now-price');
+                if (buyNowInput) {
+                    buyNowInput.value = buyNowPrice;
+                    buyNowInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    buyNowInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+
+                const durationInput = dialog.querySelector('#auction-duration');
+                if (durationInput) {
+                    durationInput.value = duration;
+                    durationInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    durationInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+
+                console.log('[AuctionHelper] Wypełniono pola', {
+                    auctionPrice,
+                    buyNowPrice,
+                    duration
+                });
+
+                if (autoSubmit) {
+                    setTimeout(() => {
+                        const createButton = dialog.querySelector('.button.create-button');
+                        if (createButton) {
+                            createButton.click();
+                            console.log('[AuctionHelper] Automatycznie kliknięto przycisk Wystaw');
+                            setTimeout(() => {
+                                delete dialog.dataset.auctionHelperProcessed;
+                            }, 1000);
+                        }
+                    }, 100);
+                }
+            }, 150);
+        }
+    };
+    // ======================== NPCS ON MAP ========================
+    const NpcsOnMap = {
+        panel: null,
+        npcs: [],
+        isVisible: GM_getValue('npcsOnMapVisible', true),
+        STORAGE_KEY: 'npcsOnMapPos',
+        npcsList: null,
+        updateInterval: null,
+
+        NPCS_QUERY: `
+        query npcs {
+            npcs {
+                id
+                name
+                rank
+                lvl
+                src
+                x
+                y
+            }
+        }
+    `,
+
+        RANK_ORDER: {
+            'TITAN': 0,
+            'HERO': 1,
+            'ELITE_III': 2,
+            'ELITE_II': 3,
+            'ELITE': 4,
+            'NORMAL': 5
+        },
+
+        RANK_COLORS: {
+            'HERO': '#ffc600',
+            'TITAN': '#ff6c00',
+            'ELITE_III': '#e70060',
+            'ELITE_II': '#54ff00',
+            'ELITE': '#00aeff',
+            'NORMAL': '#888888'
+        },
+
+        RANK_NAMES: {
+            'TITAN': 'Tytan',
+            'HERO': 'Heros',
+            'ELITE_III': 'Elita III',
+            'ELITE_II': 'Elita II',
+            'ELITE': 'Elita',
+            'NORMAL': 'Zwykły'
+        },
+
+        toggle(enabled) {
+            GM_setValue('npcsOnMapEnabled', enabled);
+            if (enabled) {
+                this.init();
+                this.startUpdating();
+            } else {
+                this.stopUpdating();
+                this.closePanel();
+            }
+        },
+
+        init() {
+            if (!this.panel) {
+                this.createPanel();
+            }
+        },
+
+        createPanel() {
+            if (this.panel) return;
+
+            this.panel = document.createElement('div');
+            this.panel.id = 'npcs-on-map-panel';
+            Object.assign(this.panel.style, {
+                position: 'fixed',
+                top: '15px',
+                right: '10px',
+                padding: '12px',
+                backgroundColor: '#0b2505',
+                borderRadius: '8px',
+                color: 'white',
+                fontFamily: 'times-new-roman',
+                fontSize: '13px',
+                zIndex: '9999',
+                minWidth: '260px',
+                maxWidth: '320px',
+                boxShadow: '0 2px 15px rgba(0,0,0,0.7)',
+                border: '2px solid #1a4d0d',
+                display: 'block'
+            });
+
+            const savedPos = JSON.parse(localStorage.getItem(this.STORAGE_KEY) || 'null');
+            if (savedPos) {
+                this.panel.style.top = savedPos.top + 'px';
+                this.panel.style.left = savedPos.left + 'px';
+                this.panel.style.right = 'auto';
+            }
+
+            const header = this.createHeader();
+            this.npcsList = this.createNpcsList();
+            this.panel.appendChild(header);
+            this.panel.appendChild(this.npcsList);
+            document.body.appendChild(this.panel);
+            this.npcsList.style.display = this.isVisible ? 'flex' : 'none';
+            this.makeDraggable(this.panel);
+        },
+
+        createHeader() {
+            const header = document.createElement('div');
+            Object.assign(header.style, {
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '10px',
+                paddingBottom: '8px',
+                borderBottom: '1px solid #1a4d0d',
+                userSelect: 'none'
+            });
+
+            const leftSide = document.createElement('div');
+            Object.assign(leftSide.style, {
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+            });
+
+            const icon = document.createElement('img');
+            icon.src = 'https://imgur.com/1KCMXrs.png';
+            Object.assign(icon.style, {
+                width: '24px',
+                height: '24px',
+                borderRadius: '4px'
+            });
+
+            const title = document.createElement('span');
+            title.textContent = 'Postacie na mapie';
+            Object.assign(title.style, {
+                fontSize: '16px',
+                fontWeight: 'bold',
+                color: '#fff'
+            });
+
+            leftSide.appendChild(icon);
+            leftSide.appendChild(title);
+
+            const rightSide = document.createElement('div');
+            Object.assign(rightSide.style, {
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+            });
+
+            const settingsBtn = document.createElement('button');
+            settingsBtn.innerHTML = '⚙️';
+            Object.assign(settingsBtn.style, {
+                background: 'transparent',
+                border: 'none',
+                color: '#fff',
+                fontSize: '14px',
+                cursor: 'pointer',
+                padding: '4px',
+                transition: 'all 0.2s ease',
+                opacity: '0.6'
+            });
+            settingsBtn.title = 'Ustawienia filtrowania';
+
+            settingsBtn.addEventListener('mouseenter', () => {
+                settingsBtn.style.transform = 'rotate(90deg)';
+                settingsBtn.style.opacity = '1';
+            });
+            settingsBtn.addEventListener('mouseleave', () => {
+                settingsBtn.style.transform = 'rotate(0deg)';
+                settingsBtn.style.opacity = '0.6';
+            });
+            settingsBtn.addEventListener('click', () => {
+                document.getElementById('settings-popup')?.remove();
+                PanelUI.createSettingsPopup(this.getSettings());
+            });
+
+            const toggleBtn = document.createElement('button');
+            toggleBtn.innerHTML = this.isVisible ? '⯅' : '⯆';
+            Object.assign(toggleBtn.style, {
+                background: 'transparent',
+                border: 'none',
+                color: '#fff',
+                fontSize: '16px',
+                cursor: 'pointer',
+                padding: '4px',
+                transition: 'all 0.2s ease'
+            });
+            toggleBtn.title = 'Ukryj/Pokaż postacie';
+
+            const counterSpan = document.createElement('span');
+            counterSpan.id = 'npcs-counter';
+            Object.assign(counterSpan.style, {
+                fontSize: '11px',
+                color: '#a0a0a0',
+                marginLeft: '12px',
+                display: this.isVisible ? 'none' : 'inline'
+            });
+            counterSpan.textContent = `Wyników: ${this.npcs.length}`;
+
+            toggleBtn.addEventListener('mouseenter', () => {
+                toggleBtn.style.transform = 'scale(1.1)';
+            });
+            toggleBtn.addEventListener('mouseleave', () => {
+                toggleBtn.style.transform = 'scale(1)';
+            });
+            toggleBtn.addEventListener('click', () => {
+                this.isVisible = !this.isVisible;
+                GM_setValue('npcsOnMapVisible', this.isVisible);
+                toggleBtn.innerHTML = this.isVisible ? '⯅' : '⯆';
+                this.npcsList.style.display = this.isVisible ? 'flex' : 'none';
+                counterSpan.style.display = this.isVisible ? 'none' : 'inline';
+            });
+
+            rightSide.appendChild(counterSpan);
+            rightSide.appendChild(settingsBtn);
+            rightSide.appendChild(toggleBtn);
+            header.appendChild(leftSide);
+            header.appendChild(rightSide);
+
+            return header;
+        },
+
+        getSettings() {
+            return [
+                {
+                    key: 'npcsFilterName',
+                    label: 'Filtruj po nazwie (wpisz słowo)',
+                    type: 'text',
+                    default: '',
+                    onChange: () => this.loadNpcs()
+                },
+                {
+                    key: 'npcsFilterRank',
+                    label: 'Filtruj po randze',
+                    type: 'select',
+                    options: [
+                        { value: '', label: 'Wszystkie' },
+                        { value: 'TITAN', label: 'Tytan' },
+                        { value: 'HERO', label: 'Heros' },
+                        { value: 'ELITE_III', label: 'Elita III' },
+                        { value: 'ELITE_II', label: 'Elita II' },
+                        { value: 'ELITE', label: 'Elita' },
+                        { value: 'NORMAL', label: 'Zwykły' }
+                    ],
+                    default: '',
+                    onChange: () => this.loadNpcs()
+                },
+                {
+                    key: 'npcsFilterMinLvl',
+                    label: 'Minimalny poziom',
+                    type: 'number',
+                    default: '0',
+                    onChange: () => this.loadNpcs()
+                },
+                {
+                    key: 'npcsFilterMaxLvl',
+                    label: 'Maksymalny poziom',
+                    type: 'number',
+                    default: '999',
+                    onChange: () => this.loadNpcs()
+                }
+            ];
+        },
+
+        createNpcsList() {
+            const list = document.createElement('div');
+            Object.assign(list.style, {
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                maxHeight: '136px',
+                overflowY: 'auto',
+                paddingRight: '4px',
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#1a4d0d #061d02'
+            });
+
+            const style = document.createElement('style');
+            style.innerHTML = `
+            #npcs-on-map-panel ::-webkit-scrollbar {
+                width: 8px;
+            }
+            #npcs-on-map-panel ::-webkit-scrollbar-track {
+                background: #061d02;
+                border-radius: 4px;
+            }
+            #npcs-on-map-panel ::-webkit-scrollbar-thumb {
+                background: #1a4d0d;
+                border-radius: 4px;
+            }
+            #npcs-on-map-panel ::-webkit-scrollbar-thumb:hover {
+                background: #2d7a1a;
+            }
+        `;
+            document.head.appendChild(style);
+
+            return list;
+        },
+
+        async loadNpcs() {
+            const token = GraphQLManager.getToken();
+            console.log('[NpcsOnMap] Próba załadowania, token:', token ? 'Jest (' + token.substring(0, 15) + '...)' : 'Brak');
+            if (!token) {
+                this.renderStatus('Czekam na token');
+                return;
+            }
+
+            try {
+                const data = await GraphQLManager.query(this.NPCS_QUERY);
+                console.log('[NpcsOnMap] Na mapie jest postaci:', data.npcs?.length || 0);
+                let newNpcs = data.npcs || [];
+                const filterName = GM_getValue('npcsFilterName', '').toLowerCase().trim();
+                const filterRank = GM_getValue('npcsFilterRank', '');
+                const filterMinLvl = parseInt(GM_getValue('npcsFilterMinLvl', '0'));
+                const filterMaxLvl = parseInt(GM_getValue('npcsFilterMaxLvl', '999'));
+
+                newNpcs = newNpcs.filter(npc => {
+                    // Filtr po nazwie
+                    if (filterName && !npc.name.toLowerCase().includes(filterName)) {
+                        return false;
+                    }
+
+                    if (filterRank && npc.rank !== filterRank) {
+                        return false;
+                    }
+
+                    const npcLvl = parseInt(npc.lvl) || 0;
+                    if (npcLvl < filterMinLvl || npcLvl > filterMaxLvl) {
+                        return false;
+                    }
+
+                    return true;
+                });
+
+                if (newNpcs.length === 0) {
+                    this.renderStatus('Brak postaci spełniających kryteria');
+                    this.npcs = [];
+                    return;
+                }
+
+                if (this.npcsList && this.npcsList.children.length === newNpcs.length) {
+                    const currentIds = this.npcs.map(npc => npc.id).sort();
+                    const newIds = newNpcs.map(npc => npc.id).sort();
+
+                    if (JSON.stringify(currentIds) === JSON.stringify(newIds)) {
+                        return;
+                    }
+                }
+
+                this.npcs = newNpcs;
+                this.sortNpcs();
+                this.renderNpcs();
+            } catch (e) {
+                console.error('[NpcsOnMap] Błąd:', e);
+                this.renderStatus('Błąd połączenia');
+            }
+        },
+
+        sortNpcs() {
+            this.npcs.sort((a, b) => {
+                const rankA = a.rank || 'NORMAL';
+                const rankB = b.rank || 'NORMAL';
+                const orderA = this.RANK_ORDER[rankA] ?? 999;
+                const orderB = this.RANK_ORDER[rankB] ?? 999;
+
+                if (orderA !== orderB) {
+                    return orderA - orderB;
+                }
+
+                const lvlA = parseInt(a.lvl) || 0;
+                const lvlB = parseInt(b.lvl) || 0;
+                if (lvlA !== lvlB) {
+                    return lvlB - lvlA;
+                }
+
+                return a.name.localeCompare(b.name);
+            });
+        },
+
+        renderStatus(message) {
+            if (!this.npcsList) return;
+            this.npcsList.innerHTML = `
+             <div style="text-align: center; padding: 10px; color: #888;">
+                ${message}
+              </div>
+             `;
+
+            const counter = document.getElementById('npcs-counter');
+            if (counter) {
+                counter.textContent = 'Wyników: 0';
+            }
+        },
+
+        renderNpcs() {
+            if (!this.npcsList) return;
+
+            this.npcsList.innerHTML = '';
+            this.npcs.forEach((npc, index) => {
+                const row = this.createNpcRow(npc, index);
+                this.npcsList.appendChild(row);
+            });
+
+            const counter = document.getElementById('npcs-counter');
+            if (counter) {
+                counter.textContent = `Wyników: ${this.npcs.length}`;
+            }
+        },
+
+        createNpcRow(npc, index) {
+            const rank = npc.rank || 'NORMAL';
+            const color = this.RANK_COLORS[rank] || '#888888';
+
+            const row = document.createElement('div');
+            Object.assign(row.style, {
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 8px',
+                background: '#061d02',
+                borderRadius: '6px',
+                border: `1px solid ${color}33`,
+                borderLeft: `3px solid ${color}`,
+                transition: 'all 0.2s ease',
+                fontSize: '12px'
+            });
+
+            row.addEventListener('mouseenter', () => {
+                row.style.background = '#0a2505';
+                row.style.transform = 'translateX(2px)';
+                row.style.borderLeftWidth = '4px';
+            });
+
+            row.addEventListener('mouseleave', () => {
+                row.style.background = '#061d02';
+                row.style.transform = 'translateX(0)';
+                row.style.borderLeftWidth = '3px';
+            });
+
+            const iconImg = document.createElement('img');
+            iconImg.src = npc.src;
+            iconImg.alt = npc.name;
+            Object.assign(iconImg.style, {
+                width: '24px',
+                height: '24px',
+                objectFit: 'contain'
+            });
+
+            const infoWrapper = document.createElement('div');
+            Object.assign(infoWrapper.style, {
+                flex: '1',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px'
+            });
+
+            const name = document.createElement('span');
+            name.textContent = npc.name;
+            Object.assign(name.style, {
+                color: '#e0e0e0',
+                fontWeight: '600',
+                fontSize: '12px'
+            });
+
+            const details = document.createElement('div');
+            Object.assign(details.style, {
+                display: 'flex',
+                gap: '6px',
+                alignItems: 'center',
+                fontSize: '10px'
+            });
+
+            const lvl = document.createElement('span');
+            lvl.textContent = `${npc.lvl} lvl`;
+            lvl.style.color = '#a0a0a0';
+
+            const coords = document.createElement('span');
+            coords.textContent = `(${npc.x}, ${npc.y})`;
+            coords.style.color = '#a0a0a0';
+
+            details.appendChild(lvl);
+            details.appendChild(coords);
+
+            infoWrapper.appendChild(name);
+            infoWrapper.appendChild(details);
+
+            const rankBadge = document.createElement('span');
+            rankBadge.textContent = this.RANK_NAMES[rank] || 'N';
+            Object.assign(rankBadge.style, {
+                color: color,
+                fontSize: '9px',
+                fontWeight: 'bold',
+                padding: '2px 6px',
+                background: `${color}22`,
+                borderRadius: '3px',
+                border: `1px solid ${color}44`,
+                whiteSpace: 'nowrap'
+            });
+
+            row.appendChild(iconImg);
+            row.appendChild(infoWrapper);
+            row.appendChild(rankBadge);
+
+            return row;
+        },
+
+        makeDraggable(el) {
+            let isDragging = false;
+            let offsetX, offsetY;
+
+            el.addEventListener('mousedown', (e) => {
+                if (e.target.tagName === 'BUTTON') return;
+                const header = el.querySelector('div');
+                if (!header.contains(e.target)) return;
+
+                isDragging = true;
+                offsetX = e.clientX - el.offsetLeft;
+                offsetY = e.clientY - el.offsetTop;
+                el.style.cursor = 'grabbing';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                el.style.left = (e.clientX - offsetX) + 'px';
+                el.style.top = (e.clientY - offsetY) + 'px';
+                el.style.right = 'auto';
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    el.style.cursor = 'grab';
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
+                        top: el.offsetTop,
+                        left: el.offsetLeft
+                    }));
+                }
+            });
+        },
+
+        startUpdating() {
+            setTimeout(() => this.loadNpcs(), 500);
+            this.updateInterval = setInterval(() => this.loadNpcs(), 3000);
+        },
+
+        stopUpdating() {
+            if (this.updateInterval) {
+                clearInterval(this.updateInterval);
+                this.updateInterval = null;
+            }
+        },
+
+        closePanel() {
+            if (this.panel) {
+                this.panel.remove();
+                this.panel = null;
+                this.npcsList = null;
+            }
+        }
+    };
+
     // ======================== ITEMS ON MAP ========================
     const ItemsOnMap = {
         panel: null,
         items: [],
-        isVisible: true,
+        isVisible: GM_getValue('itemsOnMapVisible', true),
         STORAGE_KEY: 'itemsOnMapPos',
         itemsList: null,
         updateInterval: null,
@@ -418,7 +1425,7 @@
             this.panel.appendChild(header);
             this.panel.appendChild(this.itemsList);
             document.body.appendChild(this.panel);
-
+            this.itemsList.style.display = this.isVisible ? 'flex' : 'none';
             this.makeDraggable(this.panel);
         },
 
@@ -468,7 +1475,7 @@
             });
 
             const toggleBtn = document.createElement('button');
-            toggleBtn.innerHTML = '⯅';
+            toggleBtn.innerHTML = this.isVisible ? '⯅' : '⯆';
             Object.assign(toggleBtn.style, {
                 background: 'transparent',
                 border: 'none',
@@ -480,6 +1487,16 @@
             });
             toggleBtn.title = 'Ukryj/Pokaż przedmioty';
 
+            const counterSpan = document.createElement('span');
+            counterSpan.id = 'items-counter';
+            Object.assign(counterSpan.style, {
+                fontSize: '11px',
+                color: '#a0a0a0',
+                marginLeft: '10px',
+                display: this.isVisible ? 'none' : 'inline'
+            });
+            counterSpan.textContent = `Wyników: ${this.items.length}`;
+
             toggleBtn.addEventListener('mouseenter', () => {
                 toggleBtn.style.transform = 'scale(1.1)';
             });
@@ -488,10 +1505,13 @@
             });
             toggleBtn.addEventListener('click', () => {
                 this.isVisible = !this.isVisible;
+                GM_setValue('itemsOnMapVisible', this.isVisible);
                 toggleBtn.innerHTML = this.isVisible ? '⯅' : '⯆';
                 this.itemsList.style.display = this.isVisible ? 'flex' : 'none';
+                counterSpan.style.display = this.isVisible ? 'none' : 'inline';
             });
 
+            rightSide.appendChild(counterSpan);
             rightSide.appendChild(toggleBtn);
             header.appendChild(leftSide);
             header.appendChild(rightSide);
@@ -505,7 +1525,7 @@
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '4px',
-                maxHeight: '200px',
+                maxHeight: '126px',
                 overflowY: 'auto',
                 paddingRight: '4px',
                 scrollbarWidth: 'thin',
@@ -544,14 +1564,24 @@
 
             try {
                 const data = await GraphQLManager.query(this.ITEMS_QUERY);
-                if (data.itemsOnMap.length == 0) {
+                console.log('[ItemsOnMap] Na mapie jest przedmiotów:', data.itemsOnMap?.length || 0);
+                const newItems = data.itemsOnMap || [];
+                if (newItems.length === 0) {
                     this.renderStatus('Brak przedmiotów na mapie');
-                    return
+                    this.items = [];
+                    return;
                 }
 
-                if (data.itemsOnMap.length == this.items.length) return;
-                console.log('[ItemsOnMap] Na mapie jest przedmiotów:', data.itemsOnMap?.length || 0);
-                this.items = data.itemsOnMap || [];
+                if (this.itemsList && this.itemsList.children.length === newItems.length) {
+                    const currentIds = this.items.map(item => item.id).sort();
+                    const newIds = newItems.map(item => item.id).sort();
+
+                    if (JSON.stringify(currentIds) === JSON.stringify(newIds)) {
+                        return;
+                    }
+                }
+
+                this.items = newItems;
                 this.sortItems();
                 this.renderItems();
             } catch (e) {
@@ -577,26 +1607,30 @@
         renderStatus(message) {
             if (!this.itemsList) return;
             this.itemsList.innerHTML = `
-            <div style="text-align: center; padding: 10px; color: #888;">
-                ${message}
-            </div>
-        `;
+        <div style="text-align: center; padding: 10px; color: #888;">
+            ${message}
+        </div>
+    `;
+
+            const counter = document.getElementById('items-counter');
+            if (counter) {
+                counter.textContent = 'Wyników: 0';
+            }
         },
 
         renderItems() {
             if (!this.itemsList) return;
 
             this.itemsList.innerHTML = '';
-
-            if (this.items.length === 0) {
-                this.renderStatus('Brak przedmiotów na mapie');
-                return;
-            }
-
             this.items.forEach((item, index) => {
                 const row = this.createItemRow(item, index);
                 this.itemsList.appendChild(row);
             });
+
+            const counter = document.getElementById('items-counter');
+            if (counter) {
+                counter.textContent = `Wyników: ${this.items.length}`;
+            }
         },
 
         createItemRow(item, index) {
@@ -709,7 +1743,7 @@
         },
 
         startUpdating() {
-            setTimeout(() => this.loadItems(), 2000);
+            setTimeout(() => this.loadItems(), 500);
             this.updateInterval = setInterval(() => this.loadItems(), 3000);
         },
 
@@ -733,7 +1767,7 @@
     const PlayersOnMap = {
         panel: null,
         others: [],
-        isVisible: true,
+        isVisible: GM_getValue('playersOnMapVisible', true),
         STORAGE_KEY: 'playersOnMapPos',
         playerList: null,
         updateInterval: null,
@@ -771,12 +1805,12 @@
         },
 
         PROFFESIONS_COLOR: {
-            'm': '#00bceb',
-            'b': '#ad810a',
-            't': '#440083',
+            'm': '#19ffe7',
+            'b': '#ff9819',
+            't': '#6749ff',
             'p': '#ffffff',
-            'w': '#830000',
-            'h': '#608300',
+            'w': '#fa1e1e',
+            'h': '#b6ff19',
         },
 
         toggle(enabled) {
@@ -831,7 +1865,7 @@
             this.panel.appendChild(header);
             this.panel.appendChild(this.playerList);
             document.body.appendChild(this.panel);
-
+            this.playerList.style.display = this.isVisible ? 'flex' : 'none';
             this.makeDraggable(this.panel);
         },
 
@@ -881,7 +1915,7 @@
             });
 
             const toggleBtn = document.createElement('button');
-            toggleBtn.innerHTML = '⯅';
+            toggleBtn.innerHTML = this.isVisible ? '⯅' : '⯆';
             Object.assign(toggleBtn.style, {
                 background: 'transparent',
                 border: 'none',
@@ -893,6 +1927,16 @@
             });
             toggleBtn.title = 'Ukryj/Pokaż graczy';
 
+            const counterSpan = document.createElement('span');
+            counterSpan.id = 'players-counter';
+            Object.assign(counterSpan.style, {
+                fontSize: '11px',
+                color: '#a0a0a0',
+                marginRight: '12px',
+                display: this.isVisible ? 'none' : 'inline'
+            });
+            counterSpan.textContent = `Wyników: ${this.others.length}`;
+
             toggleBtn.addEventListener('mouseenter', () => {
                 toggleBtn.style.transform = 'scale(1.1)';
             });
@@ -901,10 +1945,13 @@
             });
             toggleBtn.addEventListener('click', () => {
                 this.isVisible = !this.isVisible;
+                GM_setValue('playersOnMapVisible', this.isVisible);
                 toggleBtn.innerHTML = this.isVisible ? '⯅' : '⯆';
                 this.playerList.style.display = this.isVisible ? 'flex' : 'none';
+                counterSpan.style.display = this.isVisible ? 'none' : 'inline';
             });
 
+            rightSide.appendChild(counterSpan);
             rightSide.appendChild(toggleBtn);
             header.appendChild(leftSide);
             header.appendChild(rightSide);
@@ -918,7 +1965,7 @@
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '4px',
-                maxHeight: '200px',
+                maxHeight: '142px',
                 overflowY: 'auto',
                 paddingRight: '4px',
                 scrollbarWidth: 'thin',
@@ -958,14 +2005,26 @@
 
             try {
                 const data = await GraphQLManager.query(this.OTHERS_QUERY);
-                if (data.others.length == 0) {
+                console.log('[PlayersOnMap] Otrzymano graczy:', data.others?.length || 0);
+                const newOthers = data.others || [];
+                if (newOthers.length === 0) {
                     this.renderStatus('Brak graczy na mapie');
-                    return
+                    this.items = [];
+                    return;
                 }
 
-                if (data.others?.length === this.others.length) return;
-                console.log('[PlayersOnMap] Otrzymano graczy:', data.others?.length || 0);
-                this.others = data.others || [];
+                if (this.playerList && this.playerList.children.length === newOthers.length) {
+                    const currentNames = Array.from(this.playerList.children).map(row =>
+                                                                                  row.querySelector('span')?.textContent?.trim()
+                                                                                 );
+                    const newNames = newOthers.map(p => p.name);
+
+                    if (JSON.stringify(currentNames.sort()) === JSON.stringify(newNames.sort())) {
+                        return;
+                    }
+                }
+
+                this.others = newOthers;
                 this.sortPlayers();
                 this.renderPlayers();
             } catch (e) {
@@ -983,27 +2042,39 @@
         renderStatus(message) {
             if (!this.playerList) return;
             this.playerList.innerHTML = `
-            <div style="text-align: center; padding: 10px; color: #888;">
-                ${message}
-            </div>
-        `;
+        <div style="text-align: center; padding: 10px; color: #888;">
+            ${message}
+        </div>
+     `;
+
+            const counter = document.getElementById('players-counter');
+            if (counter) {
+                counter.textContent = 'Wyników: 0';
+            }
         },
 
         renderPlayers() {
             if (!this.playerList) return;
 
             this.playerList.innerHTML = '';
-
             if (this.others.length === 0) {
                 this.renderStatus('Brak graczy na mapie');
                 return;
             }
 
+            if (this.playerList.length == this.others.length) return;
+
             this.others.forEach((player, index) => {
                 const row = this.createPlayerRow(player, index);
                 this.playerList.appendChild(row);
             });
+
+            const counter = document.getElementById('players-counter');
+            if (counter) {
+                counter.textContent = `Wyników: ${this.others.length}`;
+            }
         },
+
 
         createPlayerRow(player, index) {
             const color = this.PROFFESIONS_COLOR[player.profession] || '#ffffff';
@@ -1011,15 +2082,18 @@
             Object.assign(row.style, {
                 display: 'flex',
                 alignItems: 'center',
+                flexDirection: 'row',
                 gap: '8px',
                 padding: '6px 8px',
                 background: '#061d02',
                 borderRadius: '6px',
+                whiteSpace: 'nowrap',
                 border: `1px solid #ffffff33`,
                 borderLeft: `3px solid ${color}`,
                 transition: 'all 0.2s ease',
                 fontSize: '12px'
             });
+
 
             row.addEventListener('mouseenter', () => {
                 row.style.background = '#0a2505';
@@ -1053,6 +2127,7 @@
             name.textContent = `${player.name} `;
             Object.assign(name.style, {
                 flex: '1',
+                fontSize: '12px',
                 color: '#e0e0e0',
                 fontWeight: '500'
             });
@@ -1060,7 +2135,7 @@
             const level = document.createElement('span');
             level.textContent = `${player.lvl} lvl `;
             Object.assign(level.style, {
-                flex: '1',
+                flex: '2',
                 color: '#ffffff',
                 fontWeight: '500'
             });
@@ -1068,7 +2143,7 @@
             const profession = document.createElement('span');
             profession.textContent = ` [${this.PROFFESIONS_NAMES[player.profession]}] `;
             Object.assign(profession.style, {
-                flex: '1',
+                flex: '3',
                 color: `${color}`,
                 fontWeight: '500'
             });
@@ -1128,7 +2203,7 @@
         },
 
         startUpdating() {
-            setTimeout(() => this.loadPlayers(), 2000);
+            setTimeout(() => this.loadPlayers(), 500);
             this.updateInterval = setInterval(() => this.loadPlayers(), 3000);
         },
 
@@ -1392,9 +2467,6 @@
 
                 if (winElem || victoryTextFound) {
                     setTimeout(() => {
-                        if (GM_getValue('minutnikEnabled', false)) {
-                            Minutnik.recognizeNpc();
-                        }
                         Utils.simulateKeyPress('z', 'KeyZ', 90);
                     }, 100);
                 }
@@ -1443,7 +2515,7 @@
     const CharacterSwitcher = {
         panel: null,
         characters: [],
-        currentCharacterId: null,
+        gameInfo: null,
         currentWorld: null,
 
         PROFFESIONS_ICON: {
@@ -1456,12 +2528,12 @@
         },
 
         PROFFESIONS_COLOR: {
-            'm': '#00bceb',
-            'b': '#ad810a',
-            't': '#440083',
+            'm': '#19ffe7',
+            'b': '#ff9819',
+            't': '#6749ff',
             'p': '#ffffff',
-            'w': '#830000',
-            'h': '#608300',
+            'w': '#fa1e1e',
+            'h': '#b6ff19',
         },
 
         async toggle(enabled) {
@@ -1501,7 +2573,23 @@
                     return;
                 }
 
-                const currentChar = this.characters.find(c => c.id === this.currentCharacterId);
+                const resCurrent = await fetch(CONFIG.API.CURRENTCHARACTER, {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!resCurrent.ok) {
+                    console.error('[CharacterSwitcher] Status:', resCurrent.status, resCurrent.statusText);
+                    MessageCanvas.show('Błąd', `Nie udało się pobrać aktualnej postaci (${resCurrent.status})`, '#ffd700');
+                    return;
+                }
+
+                this.gameInfo = await resCurrent.json();
+                const currentChar = this.characters.find(c => c.id === this.gameInfo.characterId);
+                console.log('[CharacterSwitcher] Aktualne ID postaci:', this.gameInfo.characterId);
                 this.currentWorld = currentChar?.world_name || 'retro';
 
                 this.createPanel();
@@ -1687,8 +2775,8 @@
             professionIcon.src = this.PROFFESIONS_ICON[character.profession];
             Object.assign(professionIcon.style, {
                 position: 'absolute',
-                top: '4px',
-                right: '4px',
+                top: '-4px',
+                right: '-4px',
                 width: '16px',
                 height: '16px',
                 objectFit: 'contain',
@@ -1710,7 +2798,6 @@
                 width: '100%',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
             });
 
             const imgWrapper = document.createElement('div');
@@ -1846,152 +2933,34 @@
     const KillCounter = {
         panel: null,
         stats: new Map(),
-        currentBattleMobs: [],
         currentCategory: 'all',
         STORAGE_KEY: 'killCounterStats',
 
-        monsters: [
-            { name: 'Czarna Wilczyca', lvl: '20', rank: 'ELITE' },
-            { name: 'Astratus', lvl: '22', rank: 'ELITE' },
-            { name: 'Kotołak Tropiciel', lvl: '23', rank: 'ELITE' },
-            { name: 'Władca rzek', lvl: '37', rank: 'ELITE_II' },
-            { name: 'Razuglag Oklash', lvl: '47', rank: 'ELITE_II' },
-            { name: 'Goplana', lvl: '75', rank: 'ELITE_II' },
-            { name: 'Mroczny Patryk', lvl: '35', rank: 'HERO' },
-            { name: 'Lisz', lvl: '60', rank: 'ELITE' },
-            { name: 'Vonaros', lvl: '60', rank: 'ELITE' },
-            { name: 'Wilcza Paszcza', lvl: '48', rank: 'ELITE' },
-            { name: 'Gnom Figlid', lvl: '48', rank: 'ELITE' },
-            { name: 'Krogor', lvl: '48', rank: 'ELITE' },
-            { name: 'Thowar', lvl: '47', rank: 'ELITE' },
-            { name: 'Wilcza Jagoda', lvl: '47', rank: 'ELITE' },
-            { name: 'Tollok Shimger', lvl: '43', rank: 'ELITE' },
-            { name: 'Herszt rozbójników', lvl: '37', rank: 'ELITE' },
-            { name: 'Mula Furla', lvl: '34', rank: 'ELITE' },
-            { name: 'Cerber', lvl: '28', rank: 'ELITE' },
-            { name: 'Paladyński Apostata', lvl: '25', rank: 'ELITE' },
-            { name: 'Astaratus', lvl: '22', rank: 'ELITE' },
-            { name: 'Szczęt alias Gładki', lvl: '47', rank: 'ELITE_II' },
-            { name: 'Tarmus Wuden', lvl: '50', rank: 'ELITE_II' },
-            { name: 'Tollok Atamatu', lvl: '73', rank: 'ELITE_II' },
-            { name: 'Tollok Utumutu', lvl: '73', rank: 'ELITE_II' },
-            { name: 'Wyznawca ciemnych mocy', lvl: '82', rank: 'ELITE_II' },
-            { name: 'Mazurnik Przybrzeżny', lvl: '82', rank: 'ELITE_II' },
-            { name: 'Łowca czaszek', lvl: '84', rank: 'ELITE_II' },
-            { name: 'Grabarz świątynny', lvl: '88', rank: 'ELITE_II' },
-            { name: 'Podły zbrojmistrz', lvl: '89', rank: 'ELITE_II' },
-            { name: 'Nieumarły krzyżowiec', lvl: '92', rank: 'ELITE_II' },
-            { name: 'Szkielet władcy żywiołów', lvl: '92', rank: 'ELITE_II' },
-            { name: 'Morthen', lvl: '96', rank: 'ELITE_II' },
-            { name: 'Miłośnik Łowców', lvl: '108', rank: 'ELITE_II' },
-            { name: 'Miłośnik Rycerzy', lvl: '108', rank: 'ELITE_II' },
-            { name: 'Miłośnik Magii', lvl: '108', rank: 'ELITE_II' },
-            { name: 'Wójt Fistuła', lvl: '118', rank: 'ELITE_II' },
-            { name: 'Krab pustelnik', lvl: '123', rank: 'ELITE_II' },
-            { name: 'Królowa śniegu', lvl: '124', rank: 'ELITE_II' },
-            { name: 'Teściowa Rumcajsa', lvl: '125', rank: 'ELITE_II' },
-            { name: 'Poskramiacz Hydr', lvl: '128', rank: 'ELITE_II' },
-            { name: 'Pogromczyni Mantikor', lvl: '128', rank: 'ELITE_II' },
-            { name: 'Pogromca gryfów', lvl: '128', rank: 'ELITE_II' },
-            { name: 'Burkog Lorulk', lvl: '135', rank: 'ELITE_II' },
-            { name: 'Jertek Moxos', lvl: '136', rank: 'ELITE_II' },
-            { name: 'Berserker Amuno', lvl: '139', rank: 'ELITE_II' },
-            { name: 'Fodug Zolash', lvl: '145', rank: 'ELITE_II' },
-            { name: 'Mistrz Worundriel', lvl: '148', rank: 'ELITE_II' },
-            { name: 'Goons Asterus', lvl: '150', rank: 'ELITE_II' },
-            { name: 'Adariel', lvl: '155', rank: 'ELITE_II' },
-            { name: 'Duch władcy klanów', lvl: '160', rank: 'ELITE_II' },
-            { name: 'Ogr Stalowy Pazur', lvl: '164', rank: 'ELITE_II' },
-            { name: 'Fursharag pożeracz umysłów', lvl: '170', rank: 'ELITE_II' },
-            { name: 'Ziuggrael strażnik królowej', lvl: '170', rank: 'ELITE_II' },
-            { name: 'Bragarth myśliwy dusz', lvl: '170', rank: 'ELITE_II' },
-            { name: 'Lusgrathera królowa pramatka', lvl: '175', rank: 'ELITE_II' },
-            { name: 'Borgoros Garamir III', lvl: '175', rank: 'ELITE_II' },
-            { name: 'Chryzoprenia', lvl: '178', rank: 'ELITE_II' },
-            { name: 'Czempion Furboli', lvl: '183', rank: 'ELITE_II' },
-            { name: 'Torunia Ankelwald', lvl: '186', rank: 'ELITE_II' },
-            { name: 'Breheret żelazny łeb', lvl: '192', rank: 'ELITE_II' },
-            { name: 'Mysiur myświórowy król', lvl: '193', rank: 'ELITE_II' },
-            { name: 'Sadolia nadzorczyni Hurys', lvl: '197', rank: 'ELITE_II' },
-            { name: 'Bergermona krwawa hrabina', lvl: '200', rank: 'ELITE_II' },
-            { name: 'Sataniel skrytobójca', lvl: '200', rank: 'ELITE_II' },
-            { name: 'Annaniel wysysacz marzeń', lvl: '200', rank: 'ELITE_II' },
-            { name: 'Gothardus kolekcjoner głów', lvl: '200', rank: 'ELITE_II' },
-            { name: 'Zufulus smakosz serc', lvl: '205', rank: 'ELITE_II' },
-            { name: 'Arachniregina Colosseus', lvl: '220', rank: 'ELITE_II' },
-            { name: 'Mocny Maddoks', lvl: '235', rank: 'ELITE_II' },
-            { name: 'Cuaitl Citlalin', lvl: '250', rank: 'ELITE_II' },
-            { name: 'Quetzalcoatl', lvl: '260', rank: 'ELITE_II' },
-            { name: 'Neferkar Set', lvl: '274', rank: 'ELITE_II' },
-            { name: 'Nymphemonia', lvl: '287', rank: 'ELITE_II' },
-            { name: 'Zorin', lvl: '300', rank: 'ELITE_II' },
-            { name: 'Furion', lvl: '300', rank: 'ELITE_II' },
-            { name: 'Artenius', lvl: '300', rank: 'ELITE_II' },
-            { name: 'Domina Ecclesiae', lvl: '21', rank: 'HERO' },
-            { name: 'Mietek Żul', lvl: '25', rank: 'HERO' },
-            { name: 'Karmazynowy Mściciel', lvl: '45', rank: 'HERO' },
-            { name: 'Złodziej', lvl: '50', rank: 'HERO' },
-            { name: 'Zły Przewodnik', lvl: '63', rank: 'HERO' },
-            { name: 'Piekielny Kościej', lvl: '74', rank: 'HERO' },
-            { name: 'Opętany Paladyn', lvl: '85', rank: 'HERO' },
-            { name: 'Kochanka Nocy', lvl: '100', rank: 'HERO' },
-            { name: 'Perski Książę', lvl: '116', rank: 'HERO' },
-            { name: 'Baca Bez Łowiec', lvl: '123', rank: 'HERO' },
-            { name: 'Obłąkany łowca orków', lvl: '144', rank: 'HERO' },
-            { name: 'Czarująca Atalia', lvl: '157', rank: 'HERO' },
-            { name: 'Święty Braciszek', lvl: '165', rank: 'HERO' },
-            { name: 'Viviana Nandin', lvl: '184', rank: 'HERO' },
-            { name: 'Demonis Pan Nicości', lvl: '210', rank: 'HERO' },
-            { name: 'Tepeyollotl', lvl: '260', rank: 'HERO' },
-            { name: 'Dziewicza Orlica', lvl: '51', rank: 'TITAN' },
-            { name: 'Zabójczy królik', lvl: '70', rank: 'TITAN' },
-            { name: 'Renegat Baulus', lvl: '101', rank: 'TITAN' },
-            { name: 'Piekielny Arcymag', lvl: '131', rank: 'TITAN' },
-            { name: 'Versus Zoons', lvl: '154', rank: 'TITAN' },
-            { name: 'Łowczyni Wspomnień', lvl: '177', rank: 'TITAN' },
-            { name: 'Przyzywacz demonów', lvl: '204', rank: 'TITAN' },
-            { name: 'Maddok Magua', lvl: '231', rank: 'TITAN' },
-            { name: 'Tezcatlipoca', lvl: '258', rank: 'TITAN' },
-            { name: 'Tanroth', lvl: '285', rank: 'TITAN' },
-            { name: 'Biała Dama', lvl: '40', rank: 'HERO' },
-            { name: 'Zjawa Pustej Maski', lvl: '43', rank: 'ELITE_II' },
-            { name: 'Karnawałowa Piękność', lvl: '35', rank: 'ELITE' },
-            { name: 'Dowódca Ghuli', lvl: '45', rank: 'ELITE' },
-            { name: 'Łowca skór', lvl: '81', rank: 'ELITE' },
-            { name: 'Zarządca magazynu', lvl: '82', rank: 'ELITE' },
-            { name: 'Szalony miś', lvl: '115', rank: 'ELITE' },
-            { name: 'Tollok Shimger', lvl: '43', rank: 'ELITE' },
-            { name: 'Zabalsamowany wyznawca Seta', lvl: '118', rank: 'ELITE' },
-            { name: 'Cheperu', lvl: '114', rank: 'ELITE' },
-            { name: 'Henry Kaprawe Oko', lvl: '114', rank: 'ELITE' },
-            { name: 'Marid', lvl: '120', rank: 'ELITE' },
-            { name: 'Szkielet bosmana', lvl: '130', rank: 'ELITE' },
-            { name: 'Monstrum z Bremus An', lvl: '85', rank: 'ELITE' },
-        ],
-
-        getMobInfo(mobName) {
-            const normalized = mobName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            const found = this.monsters.find(m => {
-                const monsterNormalized = m.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                return monsterNormalized === normalized;
-            });
-            return found || { lvl: '??', rank: 'UNKNOWN' };
+        RANK_ORDER: {
+            'TITAN': 0,
+            'HERO': 1,
+            'ELITE_III': 2,
+            'ELITE_II': 3,
+            'ELITE': 4,
+            'NORMAL': 5
         },
 
-        async imageToBase64(imgUrl) {
-            try {
-                const response = await fetch(imgUrl);
-                const blob = await response.blob();
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(blob);
-                });
-            } catch (e) {
-                console.log('[KillCounter] Błąd konwersji obrazu', e);
-                return null;
-            }
+        RANK_COLORS: {
+            'HERO': '#ffc600',
+            'TITAN': '#ff6c00',
+            'ELITE_III': '#e70060',
+            'ELITE_II': '#54ff00',
+            'ELITE': '#00aeff',
+            'NORMAL': '#888888'
+        },
+
+        RANK_NAMES: {
+            'TITAN': 'Tytan',
+            'HERO': 'Heros',
+            'ELITE_III': 'Elita III',
+            'ELITE_II': 'Elita II',
+            'ELITE': 'Elita',
+            'NORMAL': 'Zwykły'
         },
 
         toggle(enabled) {
@@ -1999,9 +2968,9 @@
             if (enabled) {
                 this.loadStats();
                 this.init();
-                intervalManager.set('killCounter', () => this.monitorBattle(), 100);
+                BattleMonitor.subscribe(this.handleBattleEvent.bind(this));
             } else {
-                intervalManager.clear('killCounter');
+                BattleMonitor.unsubscribe(this.handleBattleEvent.bind(this));
                 this.closePanel();
             }
         },
@@ -2010,174 +2979,42 @@
             this.createPanel();
         },
 
-        monitorBattle() {
-            const battleWindow = document.querySelector('.battle-window');
-            if (battleWindow && this.currentBattleMobs.length === 0) {
-                this.captureMobData();
-            } else if (!battleWindow && this.currentBattleMobs.length > 0) {
-                setTimeout(() => {
-                    this.checkBattleResult();
-                }, 100);
+        handleBattleEvent(event, data) {
+            console.log('[KillCounter] Otrzymano event:', event, data);
+
+            if (event === 'battleWon') {
+                this.incrementKillCount(data);
             }
         },
 
-        checkBattleResult() {
-            if (this.currentBattleMobs.length === 0) return;
-            const isDead = document.querySelector('#game-map-window .dazed');
+        incrementKillCount(mobs) {
+            if (!mobs || mobs.length === 0) return;
 
-            if (!isDead) {
-                setTimeout(() => {
-                    this.countLoot();
-                    this.incrementKillCount();
-                    this.currentBattleMobs = [];
-                }, 100);
-            } else {
-                this.currentBattleMobs = [];
-            }
-        },
+            console.log('[KillCounter] Aktualizacja statystyk dla mobów:', mobs);
 
-        async captureMobData() {
-            const battleWindow = document.querySelector('.battle-window');
-            if (!battleWindow) return;
-            this.currentBattleMobs = [];
-            const opponentDivs = battleWindow.querySelectorAll('.opponent');
-            for (const opponentDiv of opponentDivs) {
-                let mobName = null;
-                let mobLevel = '??';
-                let mobImage = null;
-                const imgElement = opponentDiv.querySelector('img');
-                if (imgElement) {
-                    mobImage = imgElement.src || imgElement.getAttribute('data-src');
-
-                    const altText = imgElement.getAttribute('alt');
-                    if (altText) {
-                        mobName = altText
-                            .replace(/&lt;br&gt;/g, ' ')
-                            .replace(/<br>/g, ' ')
-                            .replace(/\s+/g, ' ')
-                            .trim();
-
-                        const percentMatch = mobName.match(/(\d+)%/);
-                        if (percentMatch) {
-                            mobName = mobName.replace(/\d+%/, '').trim();
-                        }
-                    }
-
-                    const dataHtml = imgElement.getAttribute('data-html');
-                    if (dataHtml && !mobName) {
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = dataHtml;
-                        mobName = tempDiv.textContent.trim();
-                    }
-                }
-
-                const dataNpc = opponentDiv.getAttribute('data-npc');
-                if (dataNpc) {
-                    try {
-                        const data = JSON.parse(dataNpc);
-                        mobLevel = data?.schema?.inner?.lvl || '??';
-
-                        if (!mobName) {
-                            mobName = data?.schema?.inner?.name;
-                        }
-                    } catch (e) {
-                        console.log('[KillCounter] Błąd parsowania data-npc:', e);
-                    }
-                }
-
-                if (!mobName) {
-                    console.log('[KillCounter] Pominięto moba bez nazwy');
-                    continue;
-                }
-
-                mobName = mobName
-                    .replace(/\d+%/g, '')
-                    .replace(/\[.*?\]/g, '')
-                    .trim();
-
-                const mobInfo = this.getMobInfo(mobName);
-                if (mobInfo.rank === 'UNKNOWN') {
-                    console.log('[KillCounter] Pominięto moba spoza listy:', mobName);
-                    continue;
-                }
-
-                let imageBase64 = null;
-                if (mobImage) {
-                    imageBase64 = await this.imageToBase64(mobImage);
-                }
-
-                this.currentBattleMobs.push({
-                    name: mobName,
-                    level: mobInfo.lvl,
-                    rank: mobInfo.rank,
-                    image: imageBase64,
-                    lootedItems: []
-                });
-            }
-
-            console.log('[KillCounter] Zapisano moby:', this.currentBattleMobs);
-        },
-
-        countLoot() {
-            if (this.currentBattleMobs.length === 0) return;
-
-            const lootsWindow = document.querySelector('#loots');
-            if (!lootsWindow) {
-                console.log('[KillCounter] Brak okna łupów');
-                return;
-            }
-
-            const lootItems = lootsWindow.querySelectorAll('.loot-wrapper [data-item]');
-            console.log('[KillCounter] Znaleziono przedmiotów:', lootItems.length);
-            const collectedLoots = [];
-            lootItems.forEach(item => {
-                const data = Utils.parseItemData(item);
-                if (!data) return;
-
-                const rarity = data.schema?.inner?.rarity?.toLowerCase();
-                console.log('[KillCounter] Przedmiot:', data.schema?.inner?.name, 'Rzadkość:', rarity);
-
-                if (rarity === 'unique' || rarity === 'heroic' || rarity === 'legendary') {
-                    collectedLoots.push(rarity);
-                }
-            });
-
-            console.log('[KillCounter] Zebrane looty:', collectedLoots);
-            if (this.currentBattleMobs.length > 0) {
-                collectedLoots.forEach((loot, index) => {
-                    const mobIndex = index % this.currentBattleMobs.length;
-                    this.currentBattleMobs[mobIndex].lootedItems.push(loot);
-                });
-            }
-
-            console.log('[KillCounter] Looty przypisane do mobów:', this.currentBattleMobs);
-        },
-
-        incrementKillCount() {
-            if (this.currentBattleMobs.length === 0) return;
-            this.currentBattleMobs.forEach(currentMob => {
-                const mobName = currentMob.name;
-                const existing = this.stats.get(mobName) || {
-                    name: mobName,
-                    level: currentMob.level,
-                    rank: currentMob.rank,
-                    image: currentMob.image,
+            mobs.forEach(mob => {
+                const existing = this.stats.get(mob.name) || {
+                    name: mob.name,
+                    level: mob.level,
+                    rank: mob.rank,
+                    image: mob.image,
                     kills: 0,
                     unique: 0,
                     heroic: 0,
                     legendary: 0
                 };
 
-                if (currentMob.image) {
-                    existing.image = currentMob.image;
+                if (mob.image) {
+                    existing.image = mob.image;
                 }
 
                 existing.kills++;
-                existing.unique += currentMob.lootedItems.filter(i => i === 'unique').length;
-                existing.heroic += currentMob.lootedItems.filter(i => i === 'heroic').length;
-                existing.legendary += currentMob.lootedItems.filter(i => i === 'legendary').length;
-                console.log('[KillCounter] Aktualizacja statystyk dla:', mobName, existing);
-                this.stats.set(mobName, existing);
+                existing.unique += mob.lootedItems.filter(i => i === 'unique').length;
+                existing.heroic += mob.lootedItems.filter(i => i === 'heroic').length;
+                existing.legendary += mob.lootedItems.filter(i => i === 'legendary').length;
+
+                console.log('[KillCounter] Zaktualizowano statystyki dla:', mob.name, existing);
+                this.stats.set(mob.name, existing);
             });
 
             this.saveStats();
@@ -2668,8 +3505,9 @@
             { id: 'hotkeys-disablemessage', var: 'disablemessage', idx: 4, gmKey: 'disableMessages', addon: 'hotKeysEnabled' },
             { id: 'hotkeys-lootfilter', var: 'lootfilter', idx: 5, gmKey: 'lootFilterDisable', addon: 'autoLootEnabled', hasSettings: true },
             { id: 'hotkeys-agressive', var: 'agressive', idx: 6, gmKey: 'autoAgressiveDisable', addon: 'autoAgressiveEnabled' },
-            { id: 'hotkeys-AutoSeller', var: 'autoSeller', idx: 7, gmKey: 'autoSellerDisabled', addod: 'autoSellerEnabled', hasSettings: true},
-            { id: 'hotkeys-killcounter', var: 'killcounter', idx: 8, gmKey: 'killCounterPanelOpen', addon: 'killCounterEnabled'}
+            { id: 'hotkeys-auctionhelper', var: 'auctionhelper', idx: 7, gmKey: 'auctionHelperDisabled', addon: 'auctionHelperEnabled', hasSettings: true},
+            { id: 'hotkeys-AutoSeller', var: 'autoSeller', idx: 8, gmKey: 'autoSellerDisabled', addon: 'autoSellerEnabled', hasSettings: true},
+            { id: 'hotkeys-killcounter', var: 'killcounter', idx: 9, gmKey: 'killCounterPanelOpen', addon: 'killCounterEnabled'}
         ],
 
         init() {
@@ -2841,6 +3679,7 @@
     };
 
     // ======================== MINUTNIK ========================
+
     const Minutnik = {
         timers: new Map(),
         container: null,
@@ -2848,137 +3687,38 @@
         timersList: null,
         globalInterval: null,
         STORAGE_KEY: 'activeEliteTimers',
-
-        monsters: [
-            { name: 'Czarna Wilczyca', lvl: '20', rank: 'ELITE' },
-            { name: 'Astratus', lvl: '22', rank: 'ELITE' },
-            { name: 'Kotołak Tropiciel', lvl: '23', rank: 'ELITE' },
-            { name: 'Władca rzek', lvl: '37', rank: 'ELITE_II' },
-            { name: 'Razuglag Oklash', lvl: '47', rank: 'ELITE_II' },
-            { name: 'Goplana', lvl: '75', rank: 'ELITE_II' },
-            { name: 'Mroczny Patryk', lvl: '35', rank: 'HERO' },
-            { name: 'Lisz', lvl: '60', rank: 'ELITE' },
-            { name: 'Vonaros', lvl: '60', rank: 'ELITE' },
-            { name: 'Wilcza Paszcza', lvl: '48', rank: 'ELITE' },
-            { name: 'Gnom Figlid', lvl: '48', rank: 'ELITE' },
-            { name: 'Krogor', lvl: '48', rank: 'ELITE' },
-            { name: 'Thowar', lvl: '47', rank: 'ELITE' },
-            { name: 'Wilcza Jagoda', lvl: '47', rank: 'ELITE' },
-            { name: 'Tollok Shimger', lvl: '43', rank: 'ELITE' },
-            { name: 'Herszt rozbójników', lvl: '37', rank: 'ELITE' },
-            { name: 'Mula Furla', lvl: '34', rank: 'ELITE' },
-            { name: 'Cerber', lvl: '28', rank: 'ELITE' },
-            { name: 'Paladyński Apostata', lvl: '25', rank: 'ELITE' },
-            { name: 'Astaratus', lvl: '22', rank: 'ELITE' },
-            { name: 'Szczęt alias Gładki', lvl: '47', rank: 'ELITE_II' },
-            { name: 'Tarmus Wuden', lvl: '50', rank: 'ELITE_II' },
-            { name: 'Tollok Atamatu', lvl: '73', rank: 'ELITE_II' },
-            { name: 'Tollok Utumutu', lvl: '73', rank: 'ELITE_II' },
-            { name: 'Wyznawca ciemnych mocy', lvl: '82', rank: 'ELITE_II' },
-            { name: 'Mazurnik Przybrzeżny', lvl: '82', rank: 'ELITE_II' },
-            { name: 'Łowca czaszek', lvl: '84', rank: 'ELITE_II' },
-            { name: 'Grabarz świątynny', lvl: '88', rank: 'ELITE_II' },
-            { name: 'Podły zbrojmistrz', lvl: '89', rank: 'ELITE_II' },
-            { name: 'Nieumarły krzyżowiec', lvl: '92', rank: 'ELITE_II' },
-            { name: 'Szkielet władcy żywiołów', lvl: '92', rank: 'ELITE_II' },
-            { name: 'Morthen', lvl: '96', rank: 'ELITE_II' },
-            { name: 'Miłośnik Łowców', lvl: '108', rank: 'ELITE_II' },
-            { name: 'Miłośnik Rycerzy', lvl: '108', rank: 'ELITE_II' },
-            { name: 'Miłośnik Magii', lvl: '108', rank: 'ELITE_II' },
-            { name: 'Wójt Fistuła', lvl: '118', rank: 'ELITE_II' },
-            { name: 'Krab pustelnik', lvl: '123', rank: 'ELITE_II' },
-            { name: 'Królowa śniegu', lvl: '124', rank: 'ELITE_II' },
-            { name: 'Teściowa Rumcajsa', lvl: '125', rank: 'ELITE_II' },
-            { name: 'Poskramiacz Hydr', lvl: '128', rank: 'ELITE_II' },
-            { name: 'Pogromczyni Mantikor', lvl: '128', rank: 'ELITE_II' },
-            { name: 'Pogromca gryfów', lvl: '128', rank: 'ELITE_II' },
-            { name: 'Burkog Lorulk', lvl: '135', rank: 'ELITE_II' },
-            { name: 'Jertek Moxos', lvl: '136', rank: 'ELITE_II' },
-            { name: 'Berserker Amuno', lvl: '139', rank: 'ELITE_II' },
-            { name: 'Fodug Zolash', lvl: '145', rank: 'ELITE_II' },
-            { name: 'Mistrz Worundriel', lvl: '148', rank: 'ELITE_II' },
-            { name: 'Goons Asterus', lvl: '150', rank: 'ELITE_II' },
-            { name: 'Adariel', lvl: '155', rank: 'ELITE_II' },
-            { name: 'Duch władcy klanów', lvl: '160', rank: 'ELITE_II' },
-            { name: 'Ogr Stalowy Pazur', lvl: '164', rank: 'ELITE_II' },
-            { name: 'Fursharag pożeracz umysłów', lvl: '170', rank: 'ELITE_II' },
-            { name: 'Ziuggrael strażnik królowej', lvl: '170', rank: 'ELITE_II' },
-            { name: 'Bragarth myśliwy dusz', lvl: '170', rank: 'ELITE_II' },
-            { name: 'Lusgrathera królowa pramatka', lvl: '175', rank: 'ELITE_II' },
-            { name: 'Borgoros Garamir III', lvl: '175', rank: 'ELITE_II' },
-            { name: 'Chryzoprenia', lvl: '178', rank: 'ELITE_II' },
-            { name: 'Czempion Furboli', lvl: '183', rank: 'ELITE_II' },
-            { name: 'Torunia Ankelwald', lvl: '186', rank: 'ELITE_II' },
-            { name: 'Breheret żelazny łeb', lvl: '192', rank: 'ELITE_II' },
-            { name: 'Mysiur myświórowy król', lvl: '193', rank: 'ELITE_II' },
-            { name: 'Sadolia nadzorczyni Hurys', lvl: '197', rank: 'ELITE_II' },
-            { name: 'Bergermona krwawa hrabina', lvl: '200', rank: 'ELITE_II' },
-            { name: 'Sataniel skrytobójca', lvl: '200', rank: 'ELITE_II' },
-            { name: 'Annaniel wysysacz marzeń', lvl: '200', rank: 'ELITE_II' },
-            { name: 'Gothardus kolekcjoner głów', lvl: '200', rank: 'ELITE_II' },
-            { name: 'Zufulus smakosz serc', lvl: '205', rank: 'ELITE_II' },
-            { name: 'Arachniregina Colosseus', lvl: '220', rank: 'ELITE_II' },
-            { name: 'Mocny Maddoks', lvl: '235', rank: 'ELITE_II' },
-            { name: 'Cuaitl Citlalin', lvl: '250', rank: 'ELITE_II' },
-            { name: 'Quetzalcoatl', lvl: '260', rank: 'ELITE_II' },
-            { name: 'Neferkar Set', lvl: '274', rank: 'ELITE_II' },
-            { name: 'Nymphemonia', lvl: '287', rank: 'ELITE_II' },
-            { name: 'Zorin', lvl: '300', rank: 'ELITE_II' },
-            { name: 'Furion', lvl: '300', rank: 'ELITE_II' },
-            { name: 'Artenius', lvl: '300', rank: 'ELITE_II' },
-            { name: 'Domina Ecclesiae', lvl: '21', rank: 'HERO' },
-            { name: 'Mietek Żul', lvl: '25', rank: 'HERO' },
-            { name: 'Karmazynowy Mściciel', lvl: '45', rank: 'HERO' },
-            { name: 'Złodziej', lvl: '50', rank: 'HERO' },
-            { name: 'Zły Przewodnik', lvl: '63', rank: 'HERO' },
-            { name: 'Piekielny Kościej', lvl: '74', rank: 'HERO' },
-            { name: 'Opętany Paladyn', lvl: '85', rank: 'HERO' },
-            { name: 'Kochanka Nocy', lvl: '100', rank: 'HERO' },
-            { name: 'Perski Książę', lvl: '116', rank: 'HERO' },
-            { name: 'Baca Bez Łowiec', lvl: '123', rank: 'HERO' },
-            { name: 'Obłąkany łowca orków', lvl: '144', rank: 'HERO' },
-            { name: 'Czarująca Atalia', lvl: '157', rank: 'HERO' },
-            { name: 'Święty Braciszek', lvl: '165', rank: 'HERO' },
-            { name: 'Viviana Nandin', lvl: '184', rank: 'HERO' },
-            { name: 'Demonis Pan Nicości', lvl: '210', rank: 'HERO' },
-            { name: 'Tepeyollotl', lvl: '260', rank: 'HERO' },
-            { name: 'Dziewicza Orlica', lvl: '51', rank: 'TITAN' },
-            { name: 'Zabójczy królik', lvl: '70', rank: 'TITAN' },
-            { name: 'Renegat Baulus', lvl: '101', rank: 'TITAN' },
-            { name: 'Piekielny Arcymag', lvl: '131', rank: 'TITAN' },
-            { name: 'Versus Zoons', lvl: '154', rank: 'TITAN' },
-            { name: 'Łowczyni Wspomnień', lvl: '177', rank: 'TITAN' },
-            { name: 'Przyzywacz demonów', lvl: '204', rank: 'TITAN' },
-            { name: 'Maddok Magua', lvl: '231', rank: 'TITAN' },
-            { name: 'Tezcatlipoca', lvl: '258', rank: 'TITAN' },
-            { name: 'Tanroth', lvl: '285', rank: 'TITAN' },
-            { name: 'Biała Dama', lvl: '40', rank: 'HERO' },
-            { name: 'Zjawa Pustej Maski', lvl: '43', rank: 'ELITE_II' },
-            { name: 'Dowódca Ghuli', lvl: '45', rank: 'ELITE' },
-            { name: 'Łowca skór', lvl: '81', rank: 'ELITE' },
-            { name: 'Zarządca magazynu', lvl: '82', rank: 'ELITE' },
-            { name: 'Szalony miś', lvl: '115', rank: 'ELITE' },
-            { name: 'Tollok Shimger', lvl: '43', rank: 'ELITE' },
-            { name: 'Zabalsamowany wyznawca Seta', lvl: '118', rank: 'ELITE' },
-            { name: 'Cheperu', lvl: '114', rank: 'ELITE' },
-            { name: 'Henry Kaprawe Oko', lvl: '114', rank: 'ELITE' },
-            { name: 'Marid', lvl: '120', rank: 'ELITE' },
-            { name: 'Szkielet bosmana', lvl: '130', rank: 'ELITE' },
-            { name: 'Monstrum z Bremus An', lvl: '85', rank: 'ELITE' }
-        ],
+        currentCharacter: null,
 
         toggle(enabled) {
             GM_setValue('minutnikEnabled', enabled);
-            this.compactMode = GM_getValue('minutnikCompact', false);
+
             if (enabled) {
                 this.loadTimers();
-                setInterval(() => this.recognizeNpc(), 500);
+                this.init();
+                BattleMonitor.subscribe(this.handleBattleEvent.bind(this));
+            } else {
+                BattleMonitor.unsubscribe(this.handleBattleEvent.bind(this));
+
+                if (this.container) {
+                    this.container.remove();
+                    this.container = null;
+                }
             }
         },
 
         init() {
+            if (this.container) return
+
             this.container = this.createContainer();
             document.body.appendChild(this.container);
+        },
+
+        handleBattleEvent(event, data) {
+            console.log('[Minutnik] Otrzymano event:', event, data);
+
+            if (event === 'battleWon') {
+                this.addTimersForMobs(data);
+            }
         },
 
         createContainer() {
@@ -3045,93 +3785,243 @@
             return container;
         },
 
-        recognizeNpc() {
-            const logsContainer = document.querySelector('.logs');
-            if (!logsContainer) return;
+        monitorBattle() {
+            const battleWindow = document.querySelector('.battle-window');
 
-            const firstLog = logsContainer.querySelector('.txt');
-            if (!firstLog) return;
-
-            const logText = firstLog.textContent || firstLog.innerText;
-            const btnClass = document.querySelector('.close-button') ? '.close-button' : '.long-button.close';
-
-            const observer = new MutationObserver(() => {
-                const btn = document.querySelector(btnClass);
-                if (!btn || btn.offsetParent === null) {
-                    const normalizedLogText = logText.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-                    for (const mob of this.monsters) {
-                        const normalizedMobName = mob.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-                        if (normalizedLogText.includes(normalizedMobName)) {
-                            if (document.querySelector('#game-map-window .dazed')) break;
-
-                            const { minTime, maxTime } = this.calculateRespawnTime(mob.lvl, mob.rank, mob.name);
-                            this.addTimer(minTime, maxTime, mob.name, mob.rank, mob.lvl);
-                            break;
-                        }
-                    }
-                    observer.disconnect();
-                }
-            });
-
-            observer.observe(document.body, {
-                childList: true, subtree: true, attributes: true,
-                attributeFilter: ['style', 'class']
-            });
-        },
-
-        calculateRespawnTime(level, rank, mobName) {
-            const lvl = parseInt(level);
-            let cappedLevel, baseTime, time, minTime, maxTime;
-
-            switch (rank) {
-                case 'ELITE':
-                    cappedLevel = Math.min(200, lvl);
-                    baseTime = 40 + 10.85 * cappedLevel - 0.02721 * Math.pow(cappedLevel, 2);
-                    time = Math.round(baseTime * 1.1);
-                    return { minTime: time, maxTime: time + 107 };
-
-                case 'ELITE_II':
-                    if (mobName === 'Zjawa Pustej Maski') {
-                        return { minTime: 420, maxTime: 470 };
-                    }
-                    cappedLevel = Math.min(200, lvl);
-                    baseTime = 40 + 10.85 * cappedLevel - 0.02721 * Math.pow(cappedLevel, 2);
-                    time = baseTime * 1.25;
-                    return { minTime: Math.round(time), maxTime: Math.round(time + 107) };
-
-                case 'HERO': {
-                    const lvlNum = parseInt(level);
-                    if (mobName === 'Biała Dama') {
-                        return { minTime: 2300 / 60, maxTime: 4100 / 60 };
-                    }
-
-                    const minTime = Math.round(70 + 0.03 * Math.pow(lvlNum, 1.9));
-                    const maxTime = Math.round(minTime + 0.6 * Math.pow(lvlNum, 1.5));
-
-                    return { minTime, maxTime };
-                }
-
-                case 'TITAN':
-                    minTime = 2664 + (lvl - 70) * (4325 - 2664) / (177 - 70);
-                    maxTime = 3223 + (lvl - 70) * (4689 - 3223) / (177 - 70);
-                    return {
-                        minTime: Math.round(minTime * 60),
-                        maxTime: Math.round(maxTime * 60)
-                    };
-
-                default:
-                    return { minTime: 600, maxTime: 600 };
+            if (battleWindow && !this.inBattle) {
+                this.inBattle = true;
+                setTimeout(() => this.captureMobData(), 100);
+            } else if (!battleWindow && this.inBattle) {
+                this.inBattle = false;
+                setTimeout(() => this.checkBattleResult(), 500);
             }
         },
 
-        addTimer(minTime, maxTime, mobName, rank, mobLvl, totalTime) {
+        checkBattleResult() {
+            if (this.currentBattleMobs.length === 0) return;
+
+            const isDead = document.querySelector('#game-map-window .dazed');
+
+            if (!isDead) {
+                console.log('[Minutnik] Wygrana walka - dodaję timery');
+                this.addTimersForMobs();
+            } else {
+                console.log('[Minutnik] Przegrana walka - czyszczę dane');
+            }
+
+            setTimeout(() => {
+                this.currentBattleMobs = [];
+            }, 100);
+        },
+
+        async captureMobData() {
+            const battleWindow = document.querySelector('.battle-window');
+            if (!battleWindow) return;
+            this.currentBattleMobs = [];
+            const opponentDivs = battleWindow.querySelectorAll('.opponent');
+            for (const opponentDiv of opponentDivs) {
+                let mobName = null;
+                let mobLevel = '??';
+                let mobImage = null;
+                const imgElement = opponentDiv.querySelector('img');
+                if (imgElement) {
+                    mobImage = imgElement.src || imgElement.getAttribute('data-src');
+
+                    const altText = imgElement.getAttribute('alt');
+                    if (altText) {
+                        mobName = altText
+                            .replace(/&lt;br&gt;/g, ' ')
+                            .replace(/<br>/g, ' ')
+                            .replace(/\s+/g, ' ')
+                            .trim();
+
+                        const percentMatch = mobName.match(/(\d+)%/);
+                        if (percentMatch) {
+                            mobName = mobName.replace(/\d+%/, '').trim();
+                        }
+                    }
+
+                    const dataHtml = imgElement.getAttribute('data-html');
+                    if (dataHtml && !mobName) {
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = dataHtml;
+                        mobName = tempDiv.textContent.trim();
+                    }
+                }
+
+                const dataNpc = opponentDiv.getAttribute('data-npc');
+                if (dataNpc) {
+                    try {
+                        const data = JSON.parse(dataNpc);
+                        mobLevel = data?.schema?.inner?.lvl || '??';
+
+                        if (!mobName) {
+                            mobName = data?.schema?.inner?.name
+                            || data?.schema?.name
+                            || data?.npc?.name
+                            || data?.name;
+                        }
+                    } catch (e) {
+                        console.log('[Minutnik] Błąd parsowania data-npc:', e);
+                    }
+                }
+
+                if (!mobName) {
+                    console.log('[Minutnik] Pominięto moba bez nazwy');
+                    continue;
+                }
+
+                mobName = mobName
+                    .replace(/\d+%/g, '')
+                    .replace(/\[.*?\]/g, '')
+                    .trim();
+
+                const mobInfo = this.getMobInfo(mobName);
+                if (mobInfo.rank === 'UNKNOWN') {
+                    console.log('[Minutnik] Pominięto moba spoza listy:', mobName);
+                    continue;
+                }
+
+                this.currentBattleMobs.push({
+                    name: mobName,
+                    level: mobInfo.lvl || mobLevel,
+                    rank: mobInfo.rank
+                });
+            }
+
+            console.log('[Minutnik] Zapisano moby:', this.currentBattleMobs);
+        },
+
+        async addTimersForMobs(mobs) {
+            if (!mobs || mobs.length === 0) {
+                console.log('[Minutnik] Brak mobów do dodania');
+                return;
+            }
+
+            console.log('[Minutnik] Dodawanie timerów dla mobów:', mobs);
+
+            const character = await this.getCurrentCharacter();
+
+            for (const mob of mobs) {
+                if (this.timers.has(mob.name)) {
+                    console.log('[Minutnik] Timer dla', mob.name, 'już istnieje - pomijam');
+                    continue;
+                }
+
+                const { minTime, maxTime } = this.calculateRespawnTime(mob.level, mob.rank);
+
+                this.addTimer(minTime, maxTime, mob.name, mob.rank, mob.level, character, mob.image);
+                console.log('[Minutnik] Dodano timer dla:', mob.name, 'min:', minTime, 'max:', maxTime);
+            }
+        },
+
+        async getCurrentCharacter() {
+            try {
+                const resCurrent = await fetch(CONFIG.API.CURRENTCHARACTER, {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!resCurrent.ok) {
+                    console.error('[Minutnik] Błąd pobierania game-credentials:', resCurrent.status);
+                    return null;
+                }
+
+                const gameInfo = await resCurrent.json();
+
+                const res = await fetch(CONFIG.API.CHARACTERS, {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!res.ok) {
+                    console.error('[Minutnik] Błąd pobierania characters:', res.status);
+                    return null;
+                }
+
+                const characters = await res.json();
+                const currentCharacter = characters.find(c => c.id === gameInfo.characterId);
+
+                if (currentCharacter) {
+                    return {
+                        id: currentCharacter.id,
+                        name: currentCharacter.name,
+                        src: currentCharacter.src,
+                        profession: currentCharacter.profession,
+                        lvl: currentCharacter.lvl
+                    };
+                }
+            } catch (e) {
+                console.error('[Minutnik] Błąd pobierania postaci:', e);
+            }
+            return null;
+        },
+
+        calculateRespawnTime(level, rank) {
+            const lvl = parseInt(level, 10);
+            let baseTime;
+
+            if (lvl <= 150) {
+                baseTime = 40 + 10.85 * lvl - 0.02721 * Math.pow(lvl, 2);
+            } else {
+                const base150 = 40 + 10.85 * 150 - 0.02721 * Math.pow(150, 2);
+                const growth = ((1200 - base150) / 150) * (lvl - 150);
+                baseTime = base150 + growth;
+            }
+
+            const multipliers = {
+                ELITE: 1.1,
+                ELITE_II: 1.315,
+                HERO: 20,
+                TITAN: 300
+            };
+
+            const multiplier = multipliers[rank] ?? 1;
+            const time = baseTime * multiplier;
+            let min, max;
+
+            if (rank === 'HERO' || rank === 'TITAN') {
+                min = 0.8;
+                max = 1.4;
+            } else {
+                min = 0.96;
+                max = 1.04;
+            }
+
+            return {
+                minTime: Math.round(time * min),
+                maxTime: Math.round(time * max)
+            };
+        },
+
+        addTimer(minTime, maxTime, mobName, rank, mobLvl, character, mobImage) {
             const now = Date.now();
             const minEndTime = now + minTime * 1000;
             const maxEndTime = now + maxTime * 1000;
 
-            this.timers.set(mobName, { minEndTime, maxEndTime, rank, mobLvl, totalTime: minTime });
+            this.timers.set(mobName, {
+                minEndTime,
+                maxEndTime,
+                rank,
+                mobLvl,
+                totalTime: minTime,
+                mobImage: mobImage || null,
+                character: character || null
+            });
+
+            console.log('[Minutnik] Timer dodany:', mobName, {
+                minTime,
+                maxTime,
+                rank,
+                mobLvl
+            });
+
             this.saveTimers();
 
             if (!this.globalInterval) {
@@ -3154,9 +4044,17 @@
             const now = Date.now();
 
             for (const mobName in stored) {
-                const { minEndTime, maxEndTime, rank, mobLvl, totalTime } = stored[mobName];
+                const { minEndTime, maxEndTime, rank, mobLvl, totalTime, mobImage, character } = stored[mobName];
                 if (maxEndTime > now) {
-                    this.timers.set(mobName, { minEndTime, maxEndTime, rank, mobLvl, totalTime });
+                    this.timers.set(mobName, {
+                        minEndTime,
+                        maxEndTime,
+                        rank,
+                        mobLvl,
+                        totalTime,
+                        mobImage: mobImage || null,
+                        character: character || null
+                    });
                 }
             }
 
@@ -3185,12 +4083,12 @@
 
                 if (maxDiff <= 0) {
                     const audioUrl = GM_getValue('audioUrlMinutnik', 'https://files.catbox.moe/od2lcz.mp3');
-                    playAudio(audioUrl);
+                    Utils.playAudio(audioUrl);
                     this.timers.delete(mobName);
                     continue;
                 } else if (minDiff === 0) {
                     const audioUrl = GM_getValue('audioUrlMinutnik', 'https://files.catbox.moe/od2lcz.mp3');
-                    playAudio(audioUrl);
+                    Utils.playAudio(audioUrl);
                 }
 
                 const timerElement = this.createTimerElement(mobName, rank, mobLvl, minDiff, maxDiff, totalTime);
@@ -3216,7 +4114,80 @@
             }
         },
 
+        createContainer() {
+            const container = document.createElement('div');
+            Object.assign(container.style, {
+                position: 'fixed', top: '15px', left: '10px', padding: '3px',
+                backgroundColor: '#0b2505', borderRadius: '8px', color: 'white',
+                fontFamily: 'times-new-roman', fontSize: '14px', zIndex: '9999',
+                minWidth: '200px', boxShadow: '0 2px 15px rgba(0,0,0,0.7)',
+                border: '2px solid #1a4d0d', display: 'none'
+            });
+
+            const header = document.createElement('div');
+            Object.assign(header.style, {
+                display: 'flex', alignItems: 'center', marginBottom: '10px',
+                paddingBottom: '8px', borderBottom: '1px solid #1a4d0d'
+            });
+
+            const icon = document.createElement('img');
+            icon.src = 'https://i.imgur.com/Odc6ClZ.gif';
+            Object.assign(icon.style, {
+                width: '24px', height: '24px', marginRight: '8px', borderRadius: '4px'
+            });
+
+            const title = document.createElement('span');
+            title.textContent = 'Minutnik';
+            Object.assign(title.style, {
+                fontSize: '18px', fontWeight: 'bold', userSelect: 'none', color: '#fff'
+            });
+
+            const compactBtn = document.createElement('button');
+            compactBtn.innerHTML = '☰';
+            Object.assign(compactBtn.style, {
+                marginLeft: 'auto',
+                background: 'transparent',
+                border: 'none',
+                color: '#fff',
+                fontSize: '18px',
+                cursor: 'pointer',
+                padding: '4px'
+            });
+
+            compactBtn.title = 'Tryb Uproszczony/Szczegółowy';
+            compactBtn.addEventListener('click', () => {
+                this.compactMode = !this.compactMode;
+                GM_setValue('minutnikCompact', this.compactMode);
+                this.updateAllTimers();
+            });
+
+            header.appendChild(icon);
+            header.appendChild(title);
+            header.appendChild(compactBtn);
+            container.appendChild(header);
+
+            this.timersList = document.createElement('div');
+            Object.assign(this.timersList.style, {
+                display: 'flex', flexDirection: 'column', gap: '6px',
+                scrollbarWidth: 'thin', scrollbarColor: '#1a4d0d #061d02',
+                maxHeight: '760px', overflowY: 'auto', paddingRight: '4px'
+            });
+            container.appendChild(this.timersList);
+
+            return container;
+        },
+
+        createTimerElement(mobName, rank, mobLvl, minDiff, maxDiff, totalTime) {
+            if (this.compactMode) {
+                return this.createCompactTimerElement(mobName, rank, mobLvl, minDiff, maxDiff, totalTime);
+            } else {
+                return this.createDetailedTimerElement(mobName, rank, mobLvl, minDiff, maxDiff, totalTime);
+            }
+        },
+
         createCompactTimerElement(mobName, rank, mobLvl, minDiff, maxDiff, totalTime) {
+            const data = this.timers.get(mobName);
+
             const row = document.createElement('div');
             Object.assign(row.style, {
                 display: 'flex',
@@ -3227,6 +4198,20 @@
                 borderBottom: '1px solid rgba(255,255,255,0.12)',
                 whiteSpace: 'nowrap'
             });
+
+            if (data?.mobImage) {
+                const mobImg = document.createElement('img');
+                mobImg.src = data.mobImage;
+                Object.assign(mobImg.style, {
+                    width: '20px',
+                    height: '20px',
+                    objectFit: 'contain',
+                    borderRadius: '4px',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    flexShrink: '0'
+                });
+                row.appendChild(mobImg);
+            }
 
             const name = document.createElement('span');
             name.textContent = mobName;
@@ -3303,36 +4288,108 @@
                 Minutnik.updateAllTimers();
             });
 
-            row.append(name, lvl, rankBadge, time, remove);
+            let charName = null;
+
+            if (data?.character?.name) {
+                charName = document.createElement('span');
+                charName.textContent = data.character.name;
+
+                Object.assign(charName.style, {
+                    fontSize: '11px',
+                    color: '#ffffff',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    padding: '1px 4px',
+                    borderRadius: '3px',
+                    transition: 'all 0.15s ease'
+                });
+
+                charName.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    await this.switchToCharacter(data.character);
+                });
+            }
+
+            row.append(
+                name,
+                lvl,
+                rankBadge,
+                ...(charName ? [charName] : []),
+                time,
+                remove
+            );
+
             return row;
         },
 
-        createTimerElement(mobName, rank, mobLvl, minDiff, maxDiff, totalTime) {
-            if (this.compactMode) {
-                return this.createCompactTimerElement(
-                    mobName, rank, mobLvl, minDiff, maxDiff, totalTime
-                );
-            }
+        createDetailedTimerElement(mobName, rank, mobLvl, minDiff, maxDiff, totalTime) {
+            const data = this.timers.get(mobName);
 
             const timerElement = document.createElement('div');
             Object.assign(timerElement.style, {
-                display: 'flex', flexDirection: 'column', padding: '8px',
-                backgroundColor: '#061d02', borderRadius: '6px',
-                border: '1px solid #1a4d0d', transition: 'all 0.3s ease'
+                display: 'flex',
+                flexDirection: 'column',
+                padding: '8px',
+                backgroundColor: '#061d02',
+                borderRadius: '6px',
+                border: '1px solid #1a4d0d',
+                transition: 'all 0.3s ease'
             });
 
             const topRow = document.createElement('div');
             Object.assign(topRow.style, {
-                display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center', marginBottom: '4px'
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '4px',
+                gap: '8px'
             });
 
-            const labelInfo = document.createElement('div');
-            Object.assign(labelInfo.style, { flex: '1', display: 'flex', flexDirection: 'column' });
+            const leftSection = document.createElement('div');
+            Object.assign(leftSection.style, {
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+            });
+
+            if (data?.mobImage) {
+                const mobImgWrapper = document.createElement('div');
+                Object.assign(mobImgWrapper.style, {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: '#10240a',
+                    borderRadius: '2px',
+                    border: '1px solid #1a4d0d',
+                    padding: '4px',
+                    flexShrink: '0'
+                });
+
+                const mobImg = document.createElement('img');
+                mobImg.src = data.mobImage;
+                Object.assign(mobImg.style, {
+                    maxWidth: '70%',
+                    maxHeight: '70%',
+                    objectFit: 'contain'
+                });
+
+                mobImgWrapper.appendChild(mobImg);
+                leftSection.appendChild(mobImgWrapper);
+            }
+
+            const middleSection = document.createElement('div');
+            Object.assign(middleSection.style, {
+                flex: '1',
+                display: 'flex',
+                flexDirection: 'column'
+            });
 
             const nameRow = document.createElement('div');
             Object.assign(nameRow.style, {
-                display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                flexWrap: 'wrap'
             });
 
             const nameSpan = document.createElement('span');
@@ -3346,21 +4403,41 @@
             nameRow.appendChild(nameSpan);
             nameRow.appendChild(lvlSpan);
 
-            const rankColors = { HERO: '#ffc600', TITAN: '#ff6c00', ELITE_II: '#54ff00', ELITE: '#00aeff' };
-            const rankNames = { HERO: 'Heros', TITAN: 'Tytan', ELITE_II: 'Elita II', ELITE: 'Elita' };
+            const rankColors = {
+                HERO: '#ffc600',
+                TITAN: '#ff6c00',
+                ELITE_II: '#54ff00',
+                ELITE: '#00aeff'
+            };
+            const rankNames = {
+                HERO: 'Heros',
+                TITAN: 'Tytan',
+                ELITE_II: 'Elita II',
+                ELITE: 'Elita'
+            };
             const rankName = rankNames[rank];
 
             if (rankName) {
                 const rankBadge = document.createElement('span');
                 Object.assign(rankBadge.style, {
-                    color: rankColors[rank], fontSize: '14px',
-                    padding: '6px 8px', borderRadius: '3px', fontWeight: 'bold'
+                    color: rankColors[rank],
+                    fontSize: '14px',
+                    padding: '6px 8px',
+                    borderRadius: '3px',
+                    fontWeight: 'bold'
                 });
                 rankBadge.textContent = rankName;
                 nameRow.appendChild(rankBadge);
             }
 
-            labelInfo.appendChild(nameRow);
+            middleSection.appendChild(nameRow);
+            leftSection.appendChild(middleSection);
+
+            const rightSection = document.createElement('div');
+            Object.assign(rightSection.style, {
+                display: 'flex',
+                alignItems: 'center'
+            });
 
             const removeBtn = document.createElement('button');
             removeBtn.textContent = '🗑️';
@@ -3395,19 +4472,27 @@
                 this.updateAllTimers();
             });
 
-            topRow.appendChild(labelInfo);
-            topRow.appendChild(removeBtn);
+            rightSection.appendChild(removeBtn);
+
+            topRow.appendChild(leftSection);
+            topRow.appendChild(rightSection);
 
             const timeRow = document.createElement('div');
             Object.assign(timeRow.style, {
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                marginTop: '4px', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.1)'
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginTop: '4px',
+                paddingTop: '6px',
+                borderTop: '1px solid rgba(255,255,255,0.1)'
             });
 
             const timeLabel = document.createElement('span');
             const timeValue = document.createElement('span');
             Object.assign(timeValue.style, {
-                fontSize: '14px', fontWeight: 'bold', fontFamily: 'monospace'
+                fontSize: '14px',
+                fontWeight: 'bold',
+                fontFamily: 'monospace'
             });
 
             if (minDiff > 0) {
@@ -3448,9 +4533,155 @@
             timerElement.appendChild(topRow);
             timerElement.appendChild(timeRow);
 
-            return timerElement;
-        }
+            if (data?.character) {
+                const charRow = this.createCharacterRow(data.character);
+                timerElement.appendChild(charRow);
+            }
 
+            return timerElement;
+        },
+
+        createCharacterRow(character) {
+            const charRow = document.createElement('div');
+            Object.assign(charRow.style, {
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginTop: '6px',
+                paddingTop: '6px',
+                borderTop: '1px solid rgba(255,255,255,0.1)',
+                cursor: 'pointer',
+                padding: '6px',
+                borderRadius: '4px',
+                transition: 'all 0.2s ease',
+                background: 'rgba(255,255,255,0.02)'
+            });
+
+            charRow.addEventListener('mouseenter', () => {
+                charRow.style.background = 'rgba(76,175,80,0.15)';
+                charRow.style.transform = 'translateX(2px)';
+            });
+
+            charRow.addEventListener('mouseleave', () => {
+                charRow.style.background = 'rgba(255,255,255,0.02)';
+                charRow.style.transform = 'translateX(0)';
+            });
+
+            charRow.addEventListener('click', async () => {
+                await this.switchToCharacter(character);
+            });
+
+            const charLabel = document.createElement('span');
+            charLabel.textContent = 'Przeloguj na:';
+            Object.assign(charLabel.style, {
+                fontSize: '11px',
+                color: '#888'
+            });
+
+            const charImgWrapper = document.createElement('div');
+            Object.assign(charImgWrapper.style, {
+                width: '32px',
+                height: '32px',
+                overflow: 'hidden',
+                borderRadius: '4px',
+                border: '1px solid #1a4d0d'
+            });
+
+            const charSprite = document.createElement('div');
+            Object.assign(charSprite.style, {
+                width: '32px',
+                height: '32px',
+                backgroundImage: `url(${character.src})`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'left top',
+                backgroundSize: 'auto',
+                imageRendering: 'pixelated'
+            });
+
+            charImgWrapper.appendChild(charSprite);
+
+            const img = new Image();
+            img.src = character.src;
+            img.onload = () => {
+                const frameWidth = img.naturalWidth / 4;
+                const frameHeight = img.naturalHeight / 4;
+                const scaleX = 32 / frameWidth;
+                const scaleY = 48 / frameHeight;
+
+                Object.assign(charSprite.style, {
+                    backgroundImage: `url(${character.src})`,
+                    backgroundSize: `${img.naturalWidth * scaleX}px ${img.naturalHeight * scaleY}px`,
+                });
+            };
+
+            const charName = document.createElement('span');
+            charName.textContent = character.name;
+            Object.assign(charName.style, {
+                fontSize: '12px',
+                color: '#e0e0e0',
+                fontWeight: '600'
+            });
+
+            const charLvl = document.createElement('span');
+            charLvl.textContent = `${character.lvl} lvl`;
+            Object.assign(charLvl.style, {
+                fontSize: '11px',
+                color: '#a0a0a0'
+            });
+
+            const switchIcon = document.createElement('span');
+            switchIcon.textContent = '↻';
+            Object.assign(switchIcon.style, {
+                marginLeft: 'auto',
+                fontSize: '14px',
+                color: '#4CAF50',
+                fontWeight: 'bold'
+            });
+
+            charRow.appendChild(charLabel);
+            charRow.appendChild(charImgWrapper);
+            charRow.appendChild(charName);
+            charRow.appendChild(charLvl);
+            charRow.appendChild(switchIcon);
+
+            return charRow;
+        },
+
+        async switchToCharacter(character) {
+            try {
+                const joinRes = await fetch(CONFIG.API.JOIN, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ character: character.id })
+                });
+
+                if (!joinRes.ok) {
+                    const errorText = await joinRes.text();
+                    console.error('[Minutnik] Błąd przełączania:', joinRes.status, errorText);
+                    MessageCanvas.show('Błąd', `Nie udało się przełączyć (${joinRes.status})`, '#ffd700');
+                    return;
+                }
+
+                const joinData = await joinRes.json();
+
+                if (joinRes.ok && joinData) {
+                    MessageCanvas.show(character.name, "Przełączono na: ", '#ffd700');
+                    setTimeout(() => {
+                        window.location.href = 'https://world-retro.margatron.ovh/';
+                    }, 500);
+                } else {
+                    MessageCanvas.show('Błąd', `Nie udało się przełączyć: ${joinData?.message || 'Nieznany błąd'}`, '#ffd700');
+                }
+            } catch (err) {
+                console.error('[Minutnik] Błąd:', err);
+                MessageCanvas.show('Błąd', 'Błąd przy przełączaniu postaci', '#ffd700');
+            }
+        }
     };
 
     function formatTime(seconds) {
@@ -3458,9 +4689,7 @@
         const hours = Math.floor((seconds % 86400) / 3600);
         const minutes = Math.floor((seconds % 3600) / 60);
         const sec = seconds % 60;
-
         const pad = (n) => String(n).padStart(2, '0');
-
         if (days > 0) return `${days}d ${pad(hours)}:${pad(minutes)}:${pad(sec)}`;
         if (hours > 0) return `${pad(hours)}:${pad(minutes)}:${pad(sec)}`;
         return `${pad(minutes)}:${pad(sec)}`;
@@ -3511,8 +4740,8 @@
         },
 
         startChecking() {
-            setTimeout(() => this.checkForHeroes(), 1000);
-            this.checkInterval = setInterval(() => this.checkForHeroes(), 5000);
+            setTimeout(() => this.checkForHeroes(), 200);
+            this.checkInterval = setInterval(() => this.checkForHeroes(), 1000);
         },
 
         stopChecking() {
@@ -3978,6 +5207,291 @@
         }
     };
 
+    // ======================== LEGEND LOOT PANEL ========================
+
+    const LegendLootPanel = {
+        panel: null,
+        STORAGE_KEY: 'legendLootPanelPos',
+        updateInterval: null,
+
+        LOOT_QUERY: `
+    query RecentLootItems {
+        recentLootItems(heroicCount: 0, legendaryCount: 8) {
+            legendaryItems {
+                obtainedAt
+                characterName
+                item {
+                    id
+                    name
+                    src
+                }
+            }
+        }
+    }
+`,
+
+        toggle(enabled) {
+            GM_setValue('legendLootPanelEnabled', enabled);
+            if (enabled) {
+                this.init();
+                this.startUpdating();
+            } else {
+                this.stopUpdating();
+                this.closePanel();
+            }
+        },
+
+        init() {
+            if (!this.panel) {
+                this.createPanel();
+            }
+        },
+
+        createPanel() {
+            if (this.panel) return;
+
+            this.panel = document.createElement('div');
+            this.panel.id = 'legend-loot-panel';
+            Object.assign(this.panel.style, {
+                position: 'fixed',
+                top: '15px',
+                right: '10px',
+                padding: '12px',
+                backgroundColor: '#0b2505',
+                borderRadius: '8px',
+                color: 'white',
+                fontFamily: 'times-new-roman',
+                fontSize: '13px',
+                zIndex: '9999',
+                minWidth: '280px',
+                maxWidth: '800px',
+                boxShadow: '0 2px 15px rgba(0,0,0,0.7)',
+                border: '2px solid #1a4d0d',
+                display: 'block'
+            });
+
+            const savedPos = JSON.parse(localStorage.getItem(this.STORAGE_KEY) || 'null');
+            if (savedPos) {
+                this.panel.style.top = savedPos.top + 'px';
+                this.panel.style.left = savedPos.left + 'px';
+                this.panel.style.right = 'auto';
+            }
+
+            const content = this.createContent();
+            this.panel.appendChild(content);
+            document.body.appendChild(this.panel);
+            this.makeDraggable(this.panel);
+        },
+
+
+        createContent() {
+            const content = document.createElement('div');
+            content.id = 'legend-loot-content';
+
+            Object.assign(content.style, {
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(70px, 1fr))',
+                gap: '8px',
+                maxWidth: '1800px',
+                maxHeight: '110px',
+                overflowY: 'auto',
+                paddingRight: '4px',
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#1a4d0d #061d02'
+            });
+
+            return content;
+        },
+
+        async loadLegends() {
+            const token = GraphQLManager.getToken();
+            if (!token) {
+                console.log('[LegendLootPanel] Czekam na token');
+                this.renderStatus('Czekam na token');
+                return;
+            }
+
+            try {
+                const data = await GraphQLManager.query(this.LOOT_QUERY);
+                console.log('[LegendLootPanel] Otrzymano dane:', data);
+
+                const legendaryItems = data.recentLootItems?.legendaryItems || [];
+
+                if (legendaryItems.length === 0) {
+                    this.renderStatus('Brak legendarnych przedmiotów');
+                    return;
+                }
+
+                this.renderLegends(legendaryItems.slice(0, 8));
+            } catch (e) {
+                console.error('[LegendLootPanel] Błąd:', e);
+                this.renderStatus('Błąd połączenia');
+            }
+        },
+
+        renderStatus(message) {
+            const content = document.getElementById('legend-loot-content');
+            if (!content) return;
+
+            content.style.display = 'block';
+            content.style.gridTemplateColumns = '1fr';
+            content.innerHTML = `
+            <div style="text-align: center; padding: 10px; color: #888;">
+                ${message}
+            </div>
+        `;
+        },
+
+        renderLegends(legends) {
+            const content = document.getElementById('legend-loot-content');
+            if (!content) return;
+
+            content.style.display = 'grid';
+            content.style.gridTemplateColumns = 'repeat(auto-fill, minmax(90px, 1fr))';
+            content.innerHTML = '';
+
+            legends.forEach(legend => {
+                const card = this.createLegendCard(legend);
+                content.appendChild(card);
+            });
+        },
+
+        createLegendCard(legend) {
+            const card = document.createElement('div');
+            Object.assign(card.style, {
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                padding: '3px',
+                background: '#061d02',
+                borderRadius: '3px',
+                border: '1px solid #1a4d0d',
+                transition: 'all 0.2s ease',
+                textAlign: 'center'
+            });
+
+            card.addEventListener('mouseenter', () => {
+                card.style.background = '#0a2505';
+                card.style.transform = 'translateY(-2px)';
+            });
+
+            card.addEventListener('mouseleave', () => {
+                card.style.background = '#061d02';
+                card.style.transform = 'translateY(0)';
+            });
+
+            const imgWrapper = document.createElement('div');
+            const legendColor = GM_getValue('highlightColorLegendary', '#d1249e');
+            Object.assign(imgWrapper.style, {
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#10240a',
+                borderRadius: '2px',
+                marginBottom: '2px',
+                boxShadow: `inset 0 0 0 1px ${legendColor}, 0 0 3px ${legendColor}`,
+                position: 'relative'
+            });
+
+            const img = document.createElement('img');
+            img.src = legend.item.src;
+            img.alt = legend.item.name;
+            Object.assign(img.style, {
+                maxWidth: '100%',
+                maxHeight: '100%',
+                objectFit: 'contain'
+            });
+
+            imgWrapper.appendChild(img);
+
+            const date = new Date(legend.obtainedAt);
+            const dateStr = `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
+            const timeStr = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+
+            const dateTime = document.createElement('div');
+            dateTime.textContent = `${dateStr} - ${timeStr}`;
+            Object.assign(dateTime.style, {
+                fontSize: '9px',
+                color: '#ffffff',
+                marginTop: '4px'
+            });
+
+            if (legend.characterName) {
+                const charName = document.createElement('div');
+                charName.textContent = legend.characterName;
+                Object.assign(charName.style, {
+                    fontSize: '9px',
+                    color: '#a0a0a0',
+                    fontWeight: '200',
+                    marginTop: '2px'
+                });
+                card.appendChild(imgWrapper);
+                card.appendChild(dateTime);
+                card.appendChild(charName);
+            } else {
+                card.appendChild(imgWrapper);
+                card.appendChild(dateTime);
+            }
+
+            return card;
+        },
+
+        makeDraggable(el) {
+            let isDragging = false;
+            let offsetX, offsetY;
+
+            el.addEventListener('mousedown', (e) => {
+                if (e.target.tagName === 'BUTTON') return;
+                const header = el.querySelector('div');
+                if (!header.contains(e.target)) return;
+
+                isDragging = true;
+                offsetX = e.clientX - el.offsetLeft;
+                offsetY = e.clientY - el.offsetTop;
+                el.style.cursor = 'grabbing';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                el.style.left = (e.clientX - offsetX) + 'px';
+                el.style.top = (e.clientY - offsetY) + 'px';
+                el.style.right = 'auto';
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    el.style.cursor = 'grab';
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
+                        top: el.offsetTop,
+                        left: el.offsetLeft
+                    }));
+                }
+            });
+        },
+
+        startUpdating() {
+            setTimeout(() => this.loadLegends(), 500);
+            this.updateInterval = setInterval(() => this.loadLegends(), 60000);
+        },
+
+        stopUpdating() {
+            if (this.updateInterval) {
+                clearInterval(this.updateInterval);
+                this.updateInterval = null;
+            }
+        },
+
+        closePanel() {
+            if (this.panel) {
+                this.panel.remove();
+                this.panel = null;
+            }
+        }
+    };
+
     // ======================== AUTO SELLER ========================
     const AutoSeller = {
         toggle(enabled) {
@@ -4088,6 +5602,40 @@
              { key: 'sellConsumablesItems', label: 'Sprzedawaj konsumpcyjne przedmioty', type: 'checkbox', default: false }
          ]},
         {
+            id: 'auctionHelperEnabled',
+            default: false,
+            icon: 'https://imgur.com/D8MBeUF.png',
+            title: 'Pomocnik Aukcjonera',
+            desc: 'Automatycznie wypełnia formularz aukcji wartościami z ustawień.',
+            onToggle: (e) => AuctionHelper.toggle(e),
+            settings: [
+                {
+                    key: 'auctionHelperPrice',
+                    label: 'Cena początkowa licytacji',
+                    type: 'number',
+                    default: '1'
+                },
+                {
+                    key: 'auctionHelperBuyNow',
+                    label: 'Cena kup teraz',
+                    type: 'number',
+                    default: '1'
+                },
+                {
+                    key: 'auctionHelperDuration',
+                    label: 'Czas trwania aukcji w godzinach)',
+                    type: 'number',
+                    default: '1'
+                },
+                {
+                    key: 'auctionHelperAutoSubmit',
+                    label: 'Automatycznie klikaj przycisk "Wystaw"',
+                    type: 'checkbox',
+                    default: false
+                }
+            ]
+        },
+        {
             id: 'itemsOnMapEnabled',
             default: false,
             icon: 'https://imgur.com/MYocJMU.png',
@@ -4110,6 +5658,14 @@
              { key: 'audioUrlMinutnik', label: 'Link do dźwięku', type: 'text', default: 'https://files.catbox.moe/od2lcz.mp3' }
          ]},
         {
+            id: 'npcsOnMapEnabled',
+            default: false,
+            icon: 'https://imgur.com/1KCMXrs.png',
+            title: 'Postacie na mapie',
+            desc: 'Wyświetla listę NPC z zaawansowanym filtrowaniem.',
+            onToggle: (e) => NpcsOnMap.toggle(e)
+        },
+        {
             id: 'killCounterEnabled',
             default: false,
             icon: 'https://imgur.com/UvmjZe5.png',
@@ -4125,6 +5681,14 @@
                     action: () => KillCounter.openPanel()
                 }
             ]
+        },
+        {
+            id: 'legendLootPanelEnabled',
+            default: false,
+            icon: 'https://imgur.com/hUc9PyR.png',
+            title: 'Panel Łupów',
+            desc: 'Pokazuje ostatnio osiem zdobytych legend przez graczy!',
+            onToggle: (e) => LegendLootPanel .toggle(e),
         },
         { id: 'autoLootEnabled', default: false, icon: 'https://i.imgur.com/pVGWAkT.gif',
          title: 'LootFilter', desc: 'Automatycznie akceptuje lub odrzuca przedmioty w oknie łupów.',
@@ -4149,7 +5713,7 @@
 
             Object.assign(panel.style, {
                 position: 'fixed',
-                width: '420px',
+                width: '460px',
                 color: '#fff',
                 zIndex: '10000',
                 border: '2px solid #1a4d0d',
@@ -4271,7 +5835,7 @@
             Object.assign(content.style, {
                 padding: '15px',
                 fontSize: '13px',
-                maxHeight: '500px',
+                maxHeight: '360px',
                 overflowY: 'auto',
                 overflowX: 'hidden',
                 scrollbarWidth: 'thin',
@@ -4585,9 +6149,51 @@
                     input.style.borderColor = '#1a4d0d';
                     input.style.background = '#10240a';
                 });
-                input.addEventListener('change', () => GM_setValue(setting.key, input.value));
+                input.addEventListener('change', () => {
+                    GM_setValue(setting.key, input.value);
+                    if (setting.onChange) setting.onChange();
+                });
                 wrapper.appendChild(labelEl);
                 wrapper.appendChild(input);
+            }
+
+            if (setting.type === 'select') {
+                const select = document.createElement('select');
+                Object.assign(select.style, {
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #1a4d0d',
+                    background: '#10240a',
+                    color: 'white',
+                    fontSize: '12px',
+                    fontFamily: 'times-new-roman',
+                    transition: 'all 0.2s ease',
+                    cursor: 'pointer'
+                });
+
+                setting.options.forEach(option => {
+                    const opt = document.createElement('option');
+                    opt.value = option.value;
+                    opt.textContent = option.label;
+                    if (option.value === value) opt.selected = true;
+                    select.appendChild(opt);
+                });
+
+                select.addEventListener('focus', () => {
+                    select.style.borderColor = '#4CAF50';
+                    select.style.background = '#0a2505';
+                });
+                select.addEventListener('blur', () => {
+                    select.style.borderColor = '#1a4d0d';
+                    select.style.background = '#10240a';
+                });
+                select.addEventListener('change', () => {
+                    GM_setValue(setting.key, select.value);
+                    if (setting.onChange) setting.onChange();
+                });
+                wrapper.appendChild(labelEl);
+                wrapper.appendChild(select);
             }
 
             if (setting.type === 'button') {
@@ -4860,6 +6466,309 @@
         }
     };
 
+
+    // ======================== WELCOME PANEL ========================
+    const WelcomePanel = {
+        STORAGE_KEY: 'welcomePanelShown',
+
+        show() {
+            if (localStorage.getItem(this.STORAGE_KEY) === 'true') {
+                return;
+            }
+
+            const panel = this.createPanel();
+            document.body.appendChild(panel);
+
+            requestAnimationFrame(() => {
+                panel.style.opacity = '1';
+                panel.style.transform = 'translate(-50%, -50%) scale(1)';
+                setTimeout(() => {
+                    panel.style.pointerEvents = 'auto';
+                }, 2000);
+            });
+
+            setTimeout(() => {
+                panel.style.pointerEvents = 'none';
+                panel.style.opacity = '0';
+                panel.style.transform = 'translate(-50%, -50%) scale(0.9)';
+                setTimeout(() => {
+                    panel.remove();
+                    localStorage.setItem(this.STORAGE_KEY, 'true');
+                }, 2000);
+            }, 20000);
+        },
+
+        createPanel() {
+            const panel = document.createElement('div');
+            panel.id = 'welcome-panel';
+            Object.assign(panel.style, {
+                position: 'fixed',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%) scale(0.8)',
+                padding: '30px',
+                background: 'linear-gradient(135deg, #0b2505 0%, #061d02 100%)',
+                borderRadius: '16px',
+                color: 'white',
+                fontFamily: 'times-new-roman',
+                fontSize: '14px',
+                zIndex: '99999',
+                minWidth: '420px',
+                maxWidth: '500px',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(76,175,80,0.2)',
+                border: '2px solid #1a4d0d',
+                opacity: '0',
+                transition: 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                pointerEvents: 'none',
+                backdropFilter: 'blur(10px)'
+            });
+
+            const glow = document.createElement('div');
+            Object.assign(glow.style, {
+                position: 'absolute',
+                top: '-3px',
+                left: '-3px',
+                right: '-3px',
+                bottom: '-3px',
+                background: 'linear-gradient(45deg, #4CAF50, #2d7a1a, #4CAF50)',
+                borderRadius: '18px',
+                zIndex: '-1',
+                opacity: '0',
+                animation: 'glowPulse 10s ease-in-out infinite',
+                filter: 'blur(6px)'
+            });
+            panel.appendChild(glow);
+
+            const header = document.createElement('div');
+            Object.assign(header.style, {
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                marginBottom: '20px',
+                paddingBottom: '15px',
+                borderBottom: '2px solid rgba(76,175,80,0.3)'
+            });
+
+            const iconWrapper = document.createElement('div');
+            Object.assign(iconWrapper.style, {
+                width: '48px',
+                height: '48px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'rgba(76,175,80,0.15)',
+                borderRadius: '12px',
+                border: '2px solid rgba(76,175,80,0.4)',
+                animation: 'iconBounce 2s ease-in-out infinite'
+            });
+
+            const icon = document.createElement('img');
+            icon.src = 'https://i.imgur.com/rjqhc5n.png';
+            Object.assign(icon.style, {
+                width: '32px',
+                height: '32px'
+            });
+            iconWrapper.appendChild(icon);
+
+            const titleWrapper = document.createElement('div');
+            const title = document.createElement('div');
+            title.textContent = 'Panel Dodatków Margatron';
+            Object.assign(title.style, {
+                fontSize: '20px',
+                fontWeight: 'bold',
+                color: '#ffffff',
+                marginBottom: '4px',
+                textShadow: '0 0 8px rgba(76,175,80,0.3)'
+            });
+
+            const subtitle = document.createElement('div');
+            subtitle.textContent = 'by DrMan';
+            Object.assign(subtitle.style, {
+                fontSize: '12px',
+                color: '#a0a0a0'
+            });
+
+            titleWrapper.appendChild(title);
+            titleWrapper.appendChild(subtitle);
+            header.appendChild(iconWrapper);
+            header.appendChild(titleWrapper);
+
+            const content = document.createElement('div');
+            Object.assign(content.style, {
+                lineHeight: '1.6',
+                color: '#e0e0e0',
+                marginBottom: '20px',
+                textAlign: 'center',
+                fontSize: '14px'
+            });
+            content.innerHTML = `
+            <p style="margin: 0 0 12px 0;">
+                Witaj w <strong style="color: #4CAF50;">Panelu Dodatków Margatron</strong>!
+            </p>
+            <p style="margin: 0 0 12px 0;">
+                Dodatki zostały stworzone, aby grało się <strong>lepiej</strong> i <strong>przyjemniej</strong>.
+                Znajdziesz tu wiele przydatnych funkcji, które usprawnią rozgrywkę.
+            </p>
+            <p style="margin: 0; color: #ffffff;">
+                Jeśli podobają Ci się dodatki, możesz wesprzeć projekt stawiając symboliczną kawę!
+            </p>
+            <p style="margin: 16px 0 8px 16px0;">
+                <strong>Kliknij na ikone by przejść do strony</strong>.
+            </p>
+        `;
+
+            const coffeeButton = document.createElement('a');
+            coffeeButton.href = 'https://buymeacoffee.com/karlos1998';
+            coffeeButton.target = '_blank';
+            coffeeButton.rel = 'noopener noreferrer';
+
+            const coffeeIcon = document.createElement('img');
+            coffeeIcon.className = 'coffee-icon';
+            coffeeIcon.src = 'https://imgur.com/a8eYWAd.png';
+            Object.assign(coffeeIcon.style, {
+                objectFit: 'contain',
+            });
+
+            coffeeButton.appendChild(coffeeIcon);
+            Object.assign(coffeeButton.style, {
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '2px',
+                padding: '4px 6px',
+                color: '#ffffff',
+                textDecoration: 'none',
+                borderRadius: '8px',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer',
+                position: 'relative',
+                overflow: 'hidden',
+                userSelect: 'none'
+            });
+
+            const buttonWrapper = document.createElement('div');
+            Object.assign(buttonWrapper.style, {
+                display: 'flex',
+                justifyContent: 'center',
+                marginBottom: '15px'
+            });
+            buttonWrapper.appendChild(coffeeButton);
+            coffeeButton.addEventListener('mouseenter', function () {
+                this.style.transform = 'translateY(-2px) scale(1.02)';
+                this.style.borderColor = '#8fc99a';
+
+                const icon = this.querySelector('.coffee-icon');
+                if (icon) {
+                    icon.style.display = 'inline-block';
+                    icon.style.animation = 'coffeeShake 0.4s ease-in-out';
+                    icon.style.color = '#8fc99a';
+                }
+            });
+
+            coffeeButton.addEventListener('mouseleave', function () {
+                this.style.transform = 'translateY(0) scale(1)';
+                this.style.borderColor = '#a6d9b2';
+
+                const icon = this.querySelector('.coffee-icon');
+                if (icon) {
+                    icon.style.animation = '';
+                    icon.style.color = '';
+                }
+            });
+
+            coffeeButton.addEventListener('mousedown', function() {
+                this.style.transform = 'translateY(-1px) scale(1.02)';
+            });
+
+            coffeeButton.addEventListener('mouseup', function() {
+                this.style.transform = 'translateY(-3px) scale(1.05)';
+            });
+
+            const progressBar = document.createElement('div');
+            Object.assign(progressBar.style, {
+                height: '4px',
+                background: 'rgba(76,175,80,0.2)',
+                borderRadius: '2px',
+                overflow: 'hidden',
+                marginTop: '15px'
+            });
+
+            const progress = document.createElement('div');
+            Object.assign(progress.style, {
+                height: '100%',
+                background: 'linear-gradient(90deg, #4CAF50, #66bb6a)',
+                borderRadius: '2px',
+                width: '0%',
+                transition: 'width 20s linear',
+                boxShadow: '0 0 6px rgba(76,175,80,0.5)'
+            });
+            progressBar.appendChild(progress);
+
+            const timeInfo = document.createElement('div');
+            timeInfo.textContent = 'Okno zamknie się automatycznie za 20 sekund...';
+            Object.assign(timeInfo.style, {
+                textAlign: 'center',
+                fontSize: '11px',
+                color: '#888',
+                marginTop: '10px',
+                fontStyle: 'italic'
+            });
+
+            panel.appendChild(header);
+            panel.appendChild(content);
+            panel.appendChild(buttonWrapper);
+            panel.appendChild(progressBar);
+            panel.appendChild(timeInfo);
+
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    progress.style.width = '100%';
+                }, 200);
+            });
+
+            if (!document.getElementById('welcome-panel-styles')) {
+                const style = document.createElement('style');
+                style.id = 'welcome-panel-styles';
+                style.innerHTML = `
+                @keyframes glowPulse {
+                    0%, 100% { opacity: 0.15; }
+                    50% { opacity: 0.25; }
+                }
+
+                @keyframes iconBounce {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-5px); }
+                }
+
+                @keyframes coffeeShake {
+                    0%, 100% { transform: rotate(0deg); }
+                    25% { transform: rotate(-15deg) scale(1.1); }
+                    75% { transform: rotate(15deg) scale(1.1); }
+                }
+
+                #welcome-panel .coffee-icon {
+                    display: inline-block;
+                    font-size: 14px;
+                    transition: all 0.3s ease;
+                }
+
+                #welcome-panel .coffee-text {
+                    transition: all 0.3s ease;
+                }
+            `;
+                document.head.appendChild(style);
+            }
+
+            return panel;
+        },
+
+        // Funkcja do resetowania panelu (przydatna do testowania)
+        reset() {
+            localStorage.removeItem(this.STORAGE_KEY);
+            console.log('[WelcomePanel] Panel został zresetowany. Odśwież stronę, aby zobaczyć go ponownie.');
+        }
+    };
+
     // ======================== GLOBAL STYLES ========================
 
     const GlobalStyles = document.createElement('style');
@@ -4907,6 +6816,14 @@
         Minutnik.init();
         KillCounter.init();
         AutoSeller.init();
+        const needsBattleMonitor = GM_getValue('killCounterEnabled', false) ||
+              GM_getValue('minutnikEnabled', false);
+
+        if (needsBattleMonitor) {
+            BattleMonitor.startMonitoring();
+            console.log('[Init] BattleMonitor uruchomiony');
+        }
+
         const observer = new MutationObserver((mutations, obs) => {
             const container = document.querySelector('#panel .small-buttons');
             if (container) {
@@ -4914,6 +6831,8 @@
                 obs.disconnect();
             }
         });
+
+        setTimeout(() => WelcomePanel.show(), 1000);
         observer.observe(document.body, { childList: true, subtree: true });
         ADDONS.forEach(addon => addon.onToggle(GM_getValue(addon.id, addon.default)));
         HeroDetector.checkForHeroes();
