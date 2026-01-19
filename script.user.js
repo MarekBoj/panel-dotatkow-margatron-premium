@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      3.3.1
+// @version      3.4.0
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -6801,11 +6801,11 @@
 
     // ======================== INICJALIZACJA ========================
     window.addEventListener('load', () => {
-        WelcomePanel.reset();
         HotKeys.init();
         Minutnik.init();
         KillCounter.init();
         AutoSeller.init();
+        WelcomePanel.reset();
 
         const needsBattleMonitor = GM_getValue('killCounterEnabled', false) ||
               GM_getValue('minutnikEnabled', false);
