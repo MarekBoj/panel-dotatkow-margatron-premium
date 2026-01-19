@@ -6805,8 +6805,6 @@
         Minutnik.init();
         KillCounter.init();
         AutoSeller.init();
-        WelcomePanel.reset();
-
         const needsBattleMonitor = GM_getValue('killCounterEnabled', false) ||
               GM_getValue('minutnikEnabled', false);
 
