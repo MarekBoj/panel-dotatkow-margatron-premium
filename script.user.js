@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      3.2.2
+// @version      3.3.0
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -1088,7 +1088,6 @@
                 const filterMaxLvl = parseInt(GM_getValue('npcsFilterMaxLvl', '999'));
 
                 newNpcs = newNpcs.filter(npc => {
-                    // Filtr po nazwie
                     if (filterName && !npc.name.toLowerCase().includes(filterName)) {
                         return false;
                     }
@@ -3686,7 +3685,7 @@
         compactMode: false,
         timersList: null,
         globalInterval: null,
-        STORAGE_KEY: 'activeEliteTimers',
+        STORAGE_POS: 'positionPanelTimer',
         currentCharacter: null,
 
         toggle(enabled) {
@@ -3709,8 +3708,12 @@
         init() {
             if (this.container) return
 
+            this.compactMode = GM_getValue('minutnikCompact', false);
+
             this.container = this.createContainer();
             document.body.appendChild(this.container);
+            this.restorePosition();
+            this.makeDraggable(this.container);
         },
 
         handleBattleEvent(event, data) {
@@ -3721,69 +3724,20 @@
             }
         },
 
-        createContainer() {
-            const container = document.createElement('div');
-            Object.assign(container.style, {
-                position: 'fixed', top: '15px', left: '10px', padding: '3px',
-                backgroundColor: '#0b2505', borderRadius: '8px', color: 'white',
-                fontFamily: 'times-new-roman', fontSize: '14px', zIndex: '9999',
-                minWidth: '200px', boxShadow: '0 2px 15px rgba(0,0,0,0.7)',
-                border: '2px solid #1a4d0d', display: 'none'
-            });
+        restorePosition() {
+            const pos = localStorage.getItem(this.STORAGE_POS);
+            if (!pos) return;
 
-            const header = document.createElement('div');
-            Object.assign(header.style, {
-                display: 'flex', alignItems: 'center', marginBottom: '10px',
-                paddingBottom: '8px', borderBottom: '1px solid #1a4d0d'
-            });
-
-            const icon = document.createElement('img');
-            icon.src = 'https://i.imgur.com/Odc6ClZ.gif';
-            Object.assign(icon.style, {
-                width: '24px', height: '24px', marginRight: '8px', borderRadius: '4px'
-            });
-
-            const title = document.createElement('span');
-            title.textContent = 'Minutnik';
-            Object.assign(title.style, {
-                fontSize: '18px', fontWeight: 'bold', userSelect: 'none', color: '#fff'
-            });
-
-            const compactBtn = document.createElement('button');
-            compactBtn.innerHTML = '☰';
-            Object.assign(compactBtn.style, {
-                marginLeft: 'auto',
-                background: 'transparent',
-                border: 'none',
-                color: '#fff',
-                fontSize: '18px',
-                cursor: 'pointer',
-                padding: '4px'
-            });
-
-            compactBtn.title = 'Tryb Uproszczony/Szczegółowy';
-
-            compactBtn.addEventListener('click', () => {
-                this.compactMode = !this.compactMode;
-                GM_setValue('minutnikCompact', this.compactMode);
-                this.updateAllTimers();
-            });
-
-            header.appendChild(icon);
-            header.appendChild(title);
-            header.appendChild(compactBtn);
-            container.appendChild(header);
-
-            this.timersList = document.createElement('div');
-            Object.assign(this.timersList.style, {
-                display: 'flex', flexDirection: 'column', gap: '6px',
-                scrollbarWidth: 'thin', scrollbarColor: '#1a4d0d #061d02',
-                maxHeight: '760px', overflowY: 'auto', paddingRight: '4px'
-            });
-            container.appendChild(this.timersList);
-
-            return container;
+            try {
+                const { top, left } = JSON.parse(pos);
+                this.container.style.top = top + 'px';
+                this.container.style.left = left + 'px';
+                this.container.style.right = 'auto';
+            } catch (e) {
+                console.warn('[Minutnik] Błąd pozycji:', e);
+            }
         },
+
 
         monitorBattle() {
             const battleWindow = document.querySelector('.battle-window');
@@ -4121,10 +4075,10 @@
                 backgroundColor: '#0b2505', borderRadius: '8px', color: 'white',
                 fontFamily: 'times-new-roman', fontSize: '14px', zIndex: '9999',
                 minWidth: '200px', boxShadow: '0 2px 15px rgba(0,0,0,0.7)',
-                border: '2px solid #1a4d0d', display: 'none'
+                border: '2px solid #1a4d0d', display: 'none', cursor: 'grab'
             });
 
-            const header = document.createElement('div');
+            const header = document.createElement('minutnik-header');
             Object.assign(header.style, {
                 display: 'flex', alignItems: 'center', marginBottom: '10px',
                 paddingBottom: '8px', borderBottom: '1px solid #1a4d0d'
@@ -4161,6 +4115,7 @@
                 this.updateAllTimers();
             });
 
+
             header.appendChild(icon);
             header.appendChild(title);
             header.appendChild(compactBtn);
@@ -4172,8 +4127,8 @@
                 scrollbarWidth: 'thin', scrollbarColor: '#1a4d0d #061d02',
                 maxHeight: '760px', overflowY: 'auto', paddingRight: '4px'
             });
-            container.appendChild(this.timersList);
 
+            container.appendChild(this.timersList);
             return container;
         },
 
@@ -4645,6 +4600,40 @@
             charRow.appendChild(switchIcon);
 
             return charRow;
+        },
+
+        makeDraggable(el) {
+            let isDragging = false;
+            let offsetX = 0, offsetY = 0;
+
+            const header = el.querySelector('minutnik-header');
+
+            header.addEventListener('mousedown', (e) => {
+                if (e.target.tagName === 'BUTTON') return;
+
+                isDragging = true;
+                offsetX = e.clientX - el.offsetLeft;
+                offsetY = e.clientY - el.offsetTop;
+                el.style.cursor = 'grabbing';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                el.style.left = (e.clientX - offsetX) + 'px';
+                el.style.top = (e.clientY - offsetY) + 'px';
+                el.style.right = 'auto';
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (!isDragging) return;
+                isDragging = false;
+                el.style.cursor = 'grab';
+
+                localStorage.setItem(this.STORAGE_POS, JSON.stringify({
+                    top: el.offsetTop,
+                    left: el.offsetLeft
+                }));
+            });
         },
 
         async switchToCharacter(character) {
@@ -6816,6 +6805,7 @@
         Minutnik.init();
         KillCounter.init();
         AutoSeller.init();
+
         const needsBattleMonitor = GM_getValue('killCounterEnabled', false) ||
               GM_getValue('minutnikEnabled', false);
 
