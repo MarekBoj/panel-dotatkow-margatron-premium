@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      4.0
+// @version      4.1
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -318,6 +318,87 @@
         },
     };
 
+    // ======================== CHARACTER MANAGER ========================
+    // Global character data manager - fetches on page load and refreshes periodically
+    const CharacterManager = {
+        currentCharacter: null,
+        isInitialized: false,
+        refreshInterval: null,
+        REFRESH_INTERVAL: 60000, // Refresh every 60 seconds
+
+        async init() {
+            if (this.isInitialized) return;
+            this.isInitialized = true;
+
+            // Initial fetch
+            await this.fetchCharacter();
+
+            // Set up periodic refresh
+            this.refreshInterval = setInterval(() => {
+                this.fetchCharacter();
+            }, this.REFRESH_INTERVAL);
+
+            console.log('[CharacterManager] Zainicjalizowano - odświeżanie co 60s');
+        },
+
+        async fetchCharacter() {
+            try {
+                const resCurrent = await fetch(CONFIG.API.CURRENTCHARACTER, {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!resCurrent.ok) {
+                    console.error('[CharacterManager] Błąd pobierania game-credentials:', resCurrent.status);
+                    return;
+                }
+
+                const gameInfo = await resCurrent.json();
+
+                const res = await fetch(CONFIG.API.CHARACTERS, {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!res.ok) {
+                    console.error('[CharacterManager] Błąd pobierania characters:', res.status);
+                    return;
+                }
+
+                const characters = await res.json();
+                const currentCharacter = characters.find(c => c.id === gameInfo.characterId);
+
+                if (currentCharacter) {
+                    this.currentCharacter = {
+                        id: currentCharacter.id,
+                        name: currentCharacter.name,
+                        src: currentCharacter.src,
+                        profession: currentCharacter.profession,
+                        lvl: currentCharacter.lvl
+                    };
+                    console.log('[CharacterManager] Pobrano postać:', this.currentCharacter.name);
+                }
+            } catch (e) {
+                console.error('[CharacterManager] Błąd pobierania postaci:', e);
+            }
+        },
+
+        getCharacter() {
+            return this.currentCharacter;
+        },
+
+        // Force refresh (e.g., after character switch)
+        async refresh() {
+            await this.fetchCharacter();
+        }
+    };
+
     const Utils = {
         simulateKeyPress(key, code, keyCode) {
             const opts = { key, code, keyCode, which: keyCode, bubbles: true, cancelable: true };
@@ -563,7 +644,8 @@
                 .replace(/[\u0300-\u036f]/g, "")
                 .trim();
 
-                return normalized.includes(monsterNormalized) || monsterNormalized.includes(normalized);
+                // Exact match only - prevents "Lisz" from matching "BazyLISZek"
+                return normalized === monsterNormalized;
             });
 
             return found || { lvl: '??', rank: 'UNKNOWN' };
@@ -3790,9 +3872,6 @@
         globalInterval: null,
         STORAGE_POS: 'positionPanelTimer',
         STORAGE_KEY: 'minutnikTimers',
-        currentCharacter: null,
-        characterCacheTime: 0,
-        CHARACTER_CACHE_DURATION: 60000, // Cache character data for 60 seconds
         lastSaveTime: 0,
         SAVE_THROTTLE: 5000, // Throttle localStorage saves to once per 5 seconds
         pendingSave: false,
@@ -3955,7 +4034,7 @@
             console.log('[Minutnik] Zapisano moby:', this.currentBattleMobs);
         },
 
-        async addTimersForMobs(mobs) {
+        addTimersForMobs(mobs) {
             if (!mobs || mobs.length === 0) {
                 console.log('[Minutnik] Brak mobów do dodania');
                 return;
@@ -3963,7 +4042,8 @@
 
             console.log('[Minutnik] Dodawanie timerów dla mobów:', mobs);
 
-            const character = await this.getCurrentCharacter();
+            // Use global CharacterManager instead of fetching on every kill
+            const character = CharacterManager.getCharacter();
 
             for (const mob of mobs) {
                 if (this.timers.has(mob.name)) {
@@ -3978,61 +4058,7 @@
             }
         },
 
-        async getCurrentCharacter() {
-            // Return cached character if still valid
-            const now = Date.now();
-            if (this.currentCharacter && (now - this.characterCacheTime) < this.CHARACTER_CACHE_DURATION) {
-                return this.currentCharacter;
-            }
-
-            try {
-                const resCurrent = await fetch(CONFIG.API.CURRENTCHARACTER, {
-                    credentials: 'include',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                if (!resCurrent.ok) {
-                    console.error('[Minutnik] Błąd pobierania game-credentials:', resCurrent.status);
-                    return this.currentCharacter; // Return cached value on error
-                }
-
-                const gameInfo = await resCurrent.json();
-
-                const res = await fetch(CONFIG.API.CHARACTERS, {
-                    credentials: 'include',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                if (!res.ok) {
-                    console.error('[Minutnik] Błąd pobierania characters:', res.status);
-                    return this.currentCharacter; // Return cached value on error
-                }
-
-                const characters = await res.json();
-                const currentCharacter = characters.find(c => c.id === gameInfo.characterId);
-
-                if (currentCharacter) {
-                    this.currentCharacter = {
-                        id: currentCharacter.id,
-                        name: currentCharacter.name,
-                        src: currentCharacter.src,
-                        profession: currentCharacter.profession,
-                        lvl: currentCharacter.lvl
-                    };
-                    this.characterCacheTime = now;
-                    return this.currentCharacter;
-                }
-            } catch (e) {
-                console.error('[Minutnik] Błąd pobierania postaci:', e);
-            }
-            return this.currentCharacter;
-        },
+        // getCurrentCharacter is now handled by global CharacterManager
 
         calculateRespawnTime(level, rank) {
             const lvl = parseInt(level, 10);
@@ -6091,17 +6117,26 @@
             label.appendChild(slider);
             wrapper.appendChild(label);
 
-            input.addEventListener('change', () => {
+            // Update visual state without triggering network operations
+            const updateVisualState = () => {
                 slider.style.backgroundColor = input.checked ? '#4CAF50' : '#1a4d0d';
                 slider.style.borderColor = input.checked ? '#66bb6a' : '#2d7a1a';
                 circle.style.transform = input.checked ? 'translateX(24px)' : 'translateX(0)';
                 circle.style.boxShadow = input.checked ?
                     '0 2px 6px rgba(76,175,80,0.5)' : '0 2px 4px rgba(0,0,0,0.3)';
+            };
+
+            input.addEventListener('change', () => {
+                updateVisualState();
                 addon.onToggle(input.checked);
-                HotKeys.toggle(GM_getValue('hotKeysEnabled'));
+                // Only reinit HotKeys if the hotkeys addon was toggled
+                if (addon.id === 'hotKeysEnabled') {
+                    HotKeys.toggle(input.checked);
+                }
             });
 
-            setTimeout(() => input.dispatchEvent(new Event('change')), 0);
+            // Just update visual state on panel open, don't trigger toggles
+            setTimeout(() => updateVisualState(), 0);
             return wrapper;
         },
 
@@ -6938,6 +6973,9 @@
 
     // ======================== INICJALIZACJA ========================
     window.addEventListener('load', () => {
+        // Initialize character manager first (fetches character data on page load)
+        CharacterManager.init();
+
         HotKeys.init();
         Minutnik.init();
         KillCounter.init();
