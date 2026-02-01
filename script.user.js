@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      3.4.1
+// @version      4.0
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -68,12 +68,54 @@
     // ======================== GRAPHQL MANAGER ========================
     const GraphQLManager = {
         API_URL: 'https://engine-retro.margatron.ovh/graphql',
+        requestQueue: [],
+        isProcessing: false,
+        MIN_REQUEST_INTERVAL: 200, // Minimum 200ms between requests
+        lastRequestTime: 0,
 
         getToken() {
             return authToken;
         },
 
         async query(queryString) {
+            return new Promise((resolve, reject) => {
+                this.requestQueue.push({ queryString, resolve, reject });
+                this.processQueue();
+            });
+        },
+
+        async processQueue() {
+            if (this.isProcessing || this.requestQueue.length === 0) {
+                return;
+            }
+
+            this.isProcessing = true;
+
+            while (this.requestQueue.length > 0) {
+                const now = Date.now();
+                const timeSinceLastRequest = now - this.lastRequestTime;
+
+                // Wait if we're sending requests too fast
+                if (timeSinceLastRequest < this.MIN_REQUEST_INTERVAL) {
+                    await new Promise(r => setTimeout(r, this.MIN_REQUEST_INTERVAL - timeSinceLastRequest));
+                }
+
+                const { queryString, resolve, reject } = this.requestQueue.shift();
+
+                try {
+                    const result = await this.executeQuery(queryString);
+                    resolve(result);
+                } catch (e) {
+                    reject(e);
+                }
+
+                this.lastRequestTime = Date.now();
+            }
+
+            this.isProcessing = false;
+        },
+
+        async executeQuery(queryString) {
             const token = this.getToken();
             if (!token) {
                 console.warn('[GraphQLManager] Brak tokena autoryzacji');
@@ -338,6 +380,44 @@
             audio.play()
                 .then(() => setTimeout(() => { audio.pause(); audio.currentTime = 0; }, 5000))
                 .catch(err => console.warn("Nie można odtworzyć dźwięku:", err));
+        },
+
+        // Debounce - delays execution until after wait ms have elapsed since last call
+        debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        },
+
+        // Throttle - ensures function is called at most once per wait ms
+        throttle(func, wait) {
+            let lastCall = 0;
+            let timeout = null;
+            return function executedFunction(...args) {
+                const now = Date.now();
+                const remaining = wait - (now - lastCall);
+
+                if (remaining <= 0) {
+                    if (timeout) {
+                        clearTimeout(timeout);
+                        timeout = null;
+                    }
+                    lastCall = now;
+                    func(...args);
+                } else if (!timeout) {
+                    timeout = setTimeout(() => {
+                        lastCall = Date.now();
+                        timeout = null;
+                        func(...args);
+                    }, remaining);
+                }
+            };
         }
     };
 
@@ -506,7 +586,7 @@
         },
 
         startMonitoring() {
-            intervalManager.set('battleMonitor', () => this.checkBattle(), 100);
+            intervalManager.set('battleMonitor', () => this.checkBattle(), 250);
             console.log('[BattleMonitor] Monitoring rozpoczęty');
         },
 
@@ -2934,6 +3014,9 @@
         stats: new Map(),
         currentCategory: 'all',
         STORAGE_KEY: 'killCounterStats',
+        lastSaveTime: 0,
+        SAVE_THROTTLE: 2000, // Throttle saves to once per 2 seconds
+        pendingSave: false,
 
         RANK_ORDER: {
             'TITAN': 0,
@@ -3021,11 +3104,31 @@
         },
 
         saveStats() {
+            const now = Date.now();
+            const timeSinceLastSave = now - this.lastSaveTime;
+
+            // If we recently saved, schedule a delayed save instead
+            if (timeSinceLastSave < this.SAVE_THROTTLE) {
+                if (!this.pendingSave) {
+                    this.pendingSave = true;
+                    setTimeout(() => {
+                        this.pendingSave = false;
+                        this.doSaveStats();
+                    }, this.SAVE_THROTTLE - timeSinceLastSave);
+                }
+                return;
+            }
+
+            this.doSaveStats();
+        },
+
+        doSaveStats() {
             const toSave = {};
             for (const [name, data] of this.stats.entries()) {
                 toSave[name] = data;
             }
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(toSave));
+            this.lastSaveTime = Date.now();
         },
 
         loadStats() {
@@ -3686,7 +3789,13 @@
         timersList: null,
         globalInterval: null,
         STORAGE_POS: 'positionPanelTimer',
+        STORAGE_KEY: 'minutnikTimers',
         currentCharacter: null,
+        characterCacheTime: 0,
+        CHARACTER_CACHE_DURATION: 60000, // Cache character data for 60 seconds
+        lastSaveTime: 0,
+        SAVE_THROTTLE: 5000, // Throttle localStorage saves to once per 5 seconds
+        pendingSave: false,
 
         toggle(enabled) {
             GM_setValue('minutnikEnabled', enabled);
@@ -3870,6 +3979,12 @@
         },
 
         async getCurrentCharacter() {
+            // Return cached character if still valid
+            const now = Date.now();
+            if (this.currentCharacter && (now - this.characterCacheTime) < this.CHARACTER_CACHE_DURATION) {
+                return this.currentCharacter;
+            }
+
             try {
                 const resCurrent = await fetch(CONFIG.API.CURRENTCHARACTER, {
                     credentials: 'include',
@@ -3881,7 +3996,7 @@
 
                 if (!resCurrent.ok) {
                     console.error('[Minutnik] Błąd pobierania game-credentials:', resCurrent.status);
-                    return null;
+                    return this.currentCharacter; // Return cached value on error
                 }
 
                 const gameInfo = await resCurrent.json();
@@ -3896,25 +4011,27 @@
 
                 if (!res.ok) {
                     console.error('[Minutnik] Błąd pobierania characters:', res.status);
-                    return null;
+                    return this.currentCharacter; // Return cached value on error
                 }
 
                 const characters = await res.json();
                 const currentCharacter = characters.find(c => c.id === gameInfo.characterId);
 
                 if (currentCharacter) {
-                    return {
+                    this.currentCharacter = {
                         id: currentCharacter.id,
                         name: currentCharacter.name,
                         src: currentCharacter.src,
                         profession: currentCharacter.profession,
                         lvl: currentCharacter.lvl
                     };
+                    this.characterCacheTime = now;
+                    return this.currentCharacter;
                 }
             } catch (e) {
                 console.error('[Minutnik] Błąd pobierania postaci:', e);
             }
-            return null;
+            return this.currentCharacter;
         },
 
         calculateRespawnTime(level, rank) {
@@ -3986,11 +4103,31 @@
         },
 
         saveTimers() {
+            const now = Date.now();
+            const timeSinceLastSave = now - this.lastSaveTime;
+
+            // If we recently saved, schedule a delayed save instead
+            if (timeSinceLastSave < this.SAVE_THROTTLE) {
+                if (!this.pendingSave) {
+                    this.pendingSave = true;
+                    setTimeout(() => {
+                        this.pendingSave = false;
+                        this.doSaveTimers();
+                    }, this.SAVE_THROTTLE - timeSinceLastSave);
+                }
+                return;
+            }
+
+            this.doSaveTimers();
+        },
+
+        doSaveTimers() {
             const toSave = {};
             for (const [mobName, data] of this.timers.entries()) {
                 toSave[mobName] = data;
             }
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(toSave));
+            this.lastSaveTime = Date.now();
         },
 
         loadTimers() {
@@ -4730,7 +4867,7 @@
 
         startChecking() {
             setTimeout(() => this.checkForHeroes(), 200);
-            this.checkInterval = setInterval(() => this.checkForHeroes(), 1000);
+            this.checkInterval = setInterval(() => this.checkForHeroes(), 3000);
         },
 
         stopChecking() {
