@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      4.5.7
+// @version      4.5.8
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -1019,6 +1019,13 @@
                     onChange: () => this.loadNpcs()
                 },
                 {
+                    key: 'npcsFilterRankOnly',
+                    label: 'Pokazuj tylko wybraną rangę',
+                    type: 'checkbox',
+                    default: false,
+                    onChange: () => this.loadNpcs()
+                },
+                {
                     key: 'npcsFilterMinLvl',
                     label: 'Minimalny poziom',
                     type: 'number',
@@ -1072,7 +1079,6 @@
 
         async loadNpcs() {
             const token = GraphQLManager.getToken();
-            console.log('[NpcsOnMap] Próba załadowania, token:', token ? 'Jest (' + token.substring(0, 15) + '...)' : 'Brak');
             if (!token) {
                 this.renderStatus('Czekam na token');
                 return;
@@ -1087,12 +1093,14 @@
                 const filterMinLvl = parseInt(GM_getValue('npcsFilterMinLvl', '0'));
                 const filterMaxLvl = parseInt(GM_getValue('npcsFilterMaxLvl', '999'));
 
+                const filterRankOnly = GM_getValue('npcsFilterRankOnly', false);
+
                 newNpcs = newNpcs.filter(npc => {
                     if (filterName && !npc.name.toLowerCase().includes(filterName)) {
                         return false;
                     }
 
-                    if (filterRank && npc.rank !== filterRank) {
+                    if (filterRankOnly && filterRank && npc.rank !== filterRank) {
                         return false;
                     }
 
@@ -1129,9 +1137,20 @@
         },
 
         sortNpcs() {
+            const filterRank = GM_getValue('npcsFilterRank', '');
+            const filterRankOnly = GM_getValue('npcsFilterRankOnly', false);
+
             this.npcs.sort((a, b) => {
                 const rankA = a.rank || 'NORMAL';
                 const rankB = b.rank || 'NORMAL';
+
+                if (filterRank && !filterRankOnly) {
+                    const aIsFiltered = rankA === filterRank;
+                    const bIsFiltered = rankB === filterRank;
+                    if (aIsFiltered && !bIsFiltered) return -1;
+                    if (!aIsFiltered && bIsFiltered) return 1;
+                }
+
                 const orderA = this.RANK_ORDER[rankA] ?? 999;
                 const orderB = this.RANK_ORDER[rankB] ?? 999;
 
@@ -1555,7 +1574,6 @@
 
         async loadItems() {
             const token = GraphQLManager.getToken();
-            console.log('[ItemsOnMap] Próba załadowania, token:', token ? 'Jest (' + token.substring(0, 15) + '...)' : 'Brak');
             if (!token) {
                 this.renderStatus('Czekam na token');
                 return;
@@ -1995,8 +2013,6 @@
 
         async loadPlayers() {
             const token = GraphQLManager.getToken();
-            console.log('[PlayersOnMap] Próba załadowania, token:', token ? 'JEST (' + token.substring(0, 15) + '...)' : 'BRAK');
-
             if (!token) {
                 this.renderStatus('Czekam na token');
                 return;
@@ -2751,15 +2767,21 @@
         },
 
         createCharacterElement(character) {
+            const isCurrentCharacter = this.gameInfo && this.gameInfo.characterId === character.id;
             const container = document.createElement('div');
+
+            if (isCurrentCharacter) {
+                container.classList.add('active-character');
+            }
+
             Object.assign(container.style, {
                 width: '56px',
                 padding: '6px',
                 textAlign: 'center',
                 cursor: 'pointer',
                 borderRadius: '8px',
-                background: 'rgba(6,29,2,0.03)',
-                border: '1px solid #1a4d0d',
+                background: isCurrentCharacter ? 'rgba(76,175,80,0.25)' : 'rgba(6,29,2,0.03)',
+                border: isCurrentCharacter ? '1px solid #4CAF50' : '1px solid #1a4d0d',
                 transition: 'all 0.2s ease',
                 position: 'relative',
                 display: 'flex',
@@ -2767,7 +2789,8 @@
                 alignItems: 'center',
                 justifyContent: 'flex-start',
                 gap: '4px',
-                paddingTop: '20px'
+                paddingTop: '20px',
+                boxShadow: isCurrentCharacter ? '0 0 12px rgba(76,175,80,0.5)' : 'none'
             });
 
             const professionIcon = document.createElement('img');
@@ -2838,17 +2861,21 @@
             container.title = character.name;
 
             container.addEventListener('mouseenter', () => {
-                container.style.background = 'rgba(76,175,80,0.15)';
+                if (!isCurrentCharacter) {
+                    container.style.background = 'rgba(76,175,80,0.15)';
+                }
                 container.style.transform = 'translateY(-2px)';
                 container.style.boxShadow = '0 4px 12px rgba(76,175,80,0.3)';
             });
 
             container.addEventListener('mouseleave', () => {
-                container.style.background = 'rgba(255,255,255,0.03)';
+                container.style.background = isCurrentCharacter
+                    ? 'rgba(76,175,80,0.25)'
+                    : 'rgba(255,255,255,0.03)';
                 container.style.transform = 'translateY(0)';
-                container.style.boxShadow = this.currentCharacterId === character.id
+                container.style.boxShadow = isCurrentCharacter
                     ? '0 0 12px rgba(76,175,80,0.5)'
-                : 'none';
+                    : 'none';
             });
 
             container.addEventListener('click', () => this.switchCharacter(character));
@@ -6967,12 +6994,18 @@
         cursor: grabbing !important;
     }
 
-    #character-switcher-panel > div img {
+    #characters-container > div img {
         transition: transform 0.2s ease;
     }
 
-    #character-switcher-panel > div:hover img {
+    #characters-container > div:hover img {
         transform: scale(1.1);
+    }
+
+    #characters-container > div.active-character {
+        background: rgba(76,175,80,0.25) !important;
+        border-color: #4CAF50 !important;
+        box-shadow: 0 0 12px rgba(76,175,80,0.5);
     }
         #addon-panel ::-webkit-scrollbar-thumb:hover {
             background: linear-gradient(135deg, #388e3c 0%, #66bb6a 100%);
