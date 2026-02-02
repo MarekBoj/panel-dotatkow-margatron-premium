@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      4.5.3
+// @version      4.5.4
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -68,10 +68,6 @@
     // ======================== GRAPHQL MANAGER ========================
     const GraphQLManager = {
         API_URL: 'https://engine-retro.margatron.ovh/graphql',
-        requestQueue: [],
-        isProcessing: false,
-        lastRequestTime: 0,
-        MIN_REQUEST_INTERVAL: 1000, // Minimalna przerwa między zapytaniami (ms)
 
         getToken() {
             return authToken;
@@ -83,15 +79,6 @@
                 console.warn('[GraphQLManager] Brak tokena autoryzacji');
                 throw new Error('Brak tokena autoryzacji');
             }
-
-            // Throttling - czekaj jeśli ostatnie zapytanie było zbyt niedawno
-            const now = Date.now();
-            const timeSinceLastRequest = now - this.lastRequestTime;
-            if (timeSinceLastRequest < this.MIN_REQUEST_INTERVAL) {
-                await new Promise(resolve => setTimeout(resolve, this.MIN_REQUEST_INTERVAL - timeSinceLastRequest));
-            }
-
-            this.lastRequestTime = Date.now();
 
             try {
                 const res = await fetch(this.API_URL, {
@@ -116,6 +103,138 @@
                 throw e;
             }
         }
+    };
+
+    // ======================== CENTRALNY DATA MANAGER ========================
+    // Jeden centralny system pobierania danych - jedno zapytanie dla wszystkich modułów
+    const DataManager = {
+        cache: {
+            npcs: null,
+            items: null,
+            others: null,
+            location: null,
+            lastUpdate: 0
+        },
+        subscribers: new Set(),
+        updateInterval: null,
+        UPDATE_INTERVAL: 10000, // Jedno zapytanie co 10 sekund
+        isUpdating: false,
+
+        // Połączone zapytanie - wszystkie dane w jednym request
+        COMBINED_QUERY: `
+            query CombinedData {
+                npcs {
+                    id
+                    name
+                    rank
+                    lvl
+                    src
+                    x
+                    y
+                }
+                itemsOnMap {
+                    id
+                    name
+                    rarity
+                    src
+                    mapLocation {
+                        x
+                        y
+                    }
+                }
+                others {
+                    id
+                    name
+                    lvl
+                    x
+                    y
+                    profession
+                    inBattle
+                    src
+                }
+                location {
+                    id
+                    name
+                }
+            }
+        `,
+
+        subscribe(callback) {
+            this.subscribers.add(callback);
+        },
+
+        unsubscribe(callback) {
+            this.subscribers.delete(callback);
+        },
+
+        notifySubscribers() {
+            this.subscribers.forEach(callback => {
+                try {
+                    callback(this.cache);
+                } catch (e) {
+                    console.error('[DataManager] Błąd w subscriber:', e);
+                }
+            });
+        },
+
+        start() {
+            if (this.updateInterval) return;
+
+            console.log('[DataManager] Uruchamiam centralny system pobierania danych');
+
+            // Pierwsze pobranie po 1 sekundzie
+            setTimeout(() => this.fetchData(), 1000);
+
+            // Następne co UPDATE_INTERVAL
+            this.updateInterval = setInterval(() => this.fetchData(), this.UPDATE_INTERVAL);
+        },
+
+        stop() {
+            if (this.updateInterval) {
+                clearInterval(this.updateInterval);
+                this.updateInterval = null;
+            }
+        },
+
+        async fetchData() {
+            if (this.isUpdating) return;
+
+            const token = GraphQLManager.getToken();
+            if (!token) {
+                return;
+            }
+
+            this.isUpdating = true;
+
+            try {
+                const data = await GraphQLManager.query(this.COMBINED_QUERY);
+
+                this.cache = {
+                    npcs: data.npcs || [],
+                    items: data.itemsOnMap || [],
+                    others: data.others || [],
+                    location: data.location || null,
+                    lastUpdate: Date.now()
+                };
+
+                console.log('[DataManager] Dane zaktualizowane - NPCs:', this.cache.npcs.length,
+                            'Items:', this.cache.items.length,
+                            'Others:', this.cache.others.length);
+
+                this.notifySubscribers();
+            } catch (e) {
+                console.error('[DataManager] Błąd pobierania danych:', e);
+            } finally {
+                this.isUpdating = false;
+            }
+        },
+
+        // Metody dostępu do cache
+        getNpcs() { return this.cache.npcs || []; },
+        getItems() { return this.cache.items || []; },
+        getOthers() { return this.cache.others || []; },
+        getLocation() { return this.cache.location; },
+        getLastUpdate() { return this.cache.lastUpdate; }
     };
 
     // ======================== KONFIGURACJA ========================
@@ -796,21 +915,7 @@
         isVisible: GM_getValue('npcsOnMapVisible', true),
         STORAGE_KEY: 'npcsOnMapPos',
         npcsList: null,
-        updateInterval: null,
-
-        NPCS_QUERY: `
-        query npcs {
-            npcs {
-                id
-                name
-                rank
-                lvl
-                src
-                x
-                y
-            }
-        }
-    `,
+        dataHandler: null,
 
         RANK_ORDER: {
             'TITAN': 0,
@@ -842,6 +947,7 @@
         toggle(enabled) {
             GM_setValue('npcsOnMapEnabled', enabled);
             if (enabled) {
+                DataManager.start(); // Uruchom DataManager jeśli nie jest uruchomiony
                 this.init();
                 this.startUpdating();
             } else {
@@ -1090,65 +1196,51 @@
             return list;
         },
 
-        async loadNpcs() {
-            const token = GraphQLManager.getToken();
-            console.log('[NpcsOnMap] Próba załadowania, token:', token ? 'Jest (' + token.substring(0, 15) + '...)' : 'Brak');
-            if (!token) {
-                this.renderStatus('Czekam na token');
+        processNpcsData(npcsData) {
+            let newNpcs = npcsData || [];
+            const filterName = GM_getValue('npcsFilterName', '').toLowerCase().trim();
+            const filterRank = GM_getValue('npcsFilterRank', '');
+            const filterMinLvl = parseInt(GM_getValue('npcsFilterMinLvl', '0'));
+            const filterMaxLvl = parseInt(GM_getValue('npcsFilterMaxLvl', '999'));
+
+            newNpcs = newNpcs.filter(npc => {
+                if (filterName && !npc.name.toLowerCase().includes(filterName)) {
+                    return false;
+                }
+
+                if (filterRank && npc.rank !== filterRank) {
+                    return false;
+                }
+
+                const npcLvl = parseInt(npc.lvl) || 0;
+                if (npcLvl < filterMinLvl || npcLvl > filterMaxLvl) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            if (newNpcs.length === 0) {
+                this.renderStatus('Brak postaci spełniających kryteria');
+                this.npcs = [];
                 return;
             }
 
-            try {
-                const data = await GraphQLManager.query(this.NPCS_QUERY);
-                console.log('[NpcsOnMap] Na mapie jest postaci:', data.npcs?.length || 0);
-                let newNpcs = data.npcs || [];
-                const filterName = GM_getValue('npcsFilterName', '').toLowerCase().trim();
-                const filterRank = GM_getValue('npcsFilterRank', '');
-                const filterMinLvl = parseInt(GM_getValue('npcsFilterMinLvl', '0'));
-                const filterMaxLvl = parseInt(GM_getValue('npcsFilterMaxLvl', '999'));
+            if (this.npcsList && this.npcsList.children.length === newNpcs.length) {
+                const currentIds = this.npcs.map(npc => npc.id).sort();
+                const newIds = newNpcs.map(npc => npc.id).sort();
 
-                newNpcs = newNpcs.filter(npc => {
-                    if (filterName && !npc.name.toLowerCase().includes(filterName)) {
-                        return false;
-                    }
-
-                    if (filterRank && npc.rank !== filterRank) {
-                        return false;
-                    }
-
-                    const npcLvl = parseInt(npc.lvl) || 0;
-                    if (npcLvl < filterMinLvl || npcLvl > filterMaxLvl) {
-                        return false;
-                    }
-
-                    return true;
-                });
-
-                if (newNpcs.length === 0) {
-                    this.renderStatus('Brak postaci spełniających kryteria');
-                    this.npcs = [];
+                if (JSON.stringify(currentIds) === JSON.stringify(newIds)) {
                     return;
                 }
-
-                if (this.npcsList && this.npcsList.children.length === newNpcs.length) {
-                    const currentIds = this.npcs.map(npc => npc.id).sort();
-                    const newIds = newNpcs.map(npc => npc.id).sort();
-
-                    if (JSON.stringify(currentIds) === JSON.stringify(newIds)) {
-                        return;
-                    }
-                }
-
-                this.npcs = newNpcs;
-                this.sortNpcs();
-                this.renderNpcs();
-
-                // Sprawdź czy któryś z NPC na mapie ma aktywny timer w Minutniku
-                this.checkMinutnikTimers(newNpcs);
-            } catch (e) {
-                console.error('[NpcsOnMap] Błąd:', e);
-                this.renderStatus('Błąd połączenia');
             }
+
+            this.npcs = newNpcs;
+            this.sortNpcs();
+            this.renderNpcs();
+
+            // Sprawdź czy któryś z NPC na mapie ma aktywny timer w Minutniku
+            this.checkMinutnikTimers(newNpcs);
         },
 
         checkMinutnikTimers(npcs) {
@@ -1361,15 +1453,26 @@
         },
 
         startUpdating() {
-            setTimeout(() => this.loadNpcs(), 1000);
-            this.updateInterval = setInterval(() => this.loadNpcs(), 15000);
+            // Używamy centralnego DataManager zamiast własnych zapytań
+            this.dataHandler = (cache) => this.onDataUpdate(cache);
+            DataManager.subscribe(this.dataHandler);
+
+            // Jeśli są już dane w cache, użyj ich
+            if (DataManager.getLastUpdate() > 0) {
+                this.onDataUpdate(DataManager.cache);
+            }
         },
 
         stopUpdating() {
-            if (this.updateInterval) {
-                clearInterval(this.updateInterval);
-                this.updateInterval = null;
+            if (this.dataHandler) {
+                DataManager.unsubscribe(this.dataHandler);
+                this.dataHandler = null;
             }
+        },
+
+        onDataUpdate(cache) {
+            if (!cache.npcs) return;
+            this.processNpcsData(cache.npcs);
         },
 
         closePanel() {
@@ -1388,22 +1491,7 @@
         isVisible: GM_getValue('itemsOnMapVisible', true),
         STORAGE_KEY: 'itemsOnMapPos',
         itemsList: null,
-        updateInterval: null,
-
-        ITEMS_QUERY: `
-        query Items {
-            itemsOnMap {
-                id
-                name
-                rarity
-                src
-                mapLocation {
-                   x
-                   y
-                }
-            }
-        }
-    `,
+        dataHandler: null,
 
         RARITY_ORDER: {
             'artefact': 0,
@@ -1426,6 +1514,7 @@
         toggle(enabled) {
             GM_setValue('itemsOnMapEnabled', enabled);
             if (enabled) {
+                DataManager.start();
                 this.init();
                 this.startUpdating();
             } else {
@@ -1604,40 +1693,26 @@
             return list;
         },
 
-        async loadItems() {
-            const token = GraphQLManager.getToken();
-            console.log('[ItemsOnMap] Próba załadowania, token:', token ? 'Jest (' + token.substring(0, 15) + '...)' : 'Brak');
-            if (!token) {
-                this.renderStatus('Czekam na token');
+        processItemsData(itemsData) {
+            const newItems = itemsData || [];
+            if (newItems.length === 0) {
+                this.renderStatus('Brak przedmiotów na mapie');
+                this.items = [];
                 return;
             }
 
-            try {
-                const data = await GraphQLManager.query(this.ITEMS_QUERY);
-                console.log('[ItemsOnMap] Na mapie jest przedmiotów:', data.itemsOnMap?.length || 0);
-                const newItems = data.itemsOnMap || [];
-                if (newItems.length === 0) {
-                    this.renderStatus('Brak przedmiotów na mapie');
-                    this.items = [];
+            if (this.itemsList && this.itemsList.children.length === newItems.length) {
+                const currentIds = this.items.map(item => item.id).sort();
+                const newIds = newItems.map(item => item.id).sort();
+
+                if (JSON.stringify(currentIds) === JSON.stringify(newIds)) {
                     return;
                 }
-
-                if (this.itemsList && this.itemsList.children.length === newItems.length) {
-                    const currentIds = this.items.map(item => item.id).sort();
-                    const newIds = newItems.map(item => item.id).sort();
-
-                    if (JSON.stringify(currentIds) === JSON.stringify(newIds)) {
-                        return;
-                    }
-                }
-
-                this.items = newItems;
-                this.sortItems();
-                this.renderItems();
-            } catch (e) {
-                console.error('[ItemsOnMap] Błąd:', e);
-                this.renderStatus('Błąd połączenia');
             }
+
+            this.items = newItems;
+            this.sortItems();
+            this.renderItems();
         },
 
         sortItems() {
@@ -1793,15 +1868,24 @@
         },
 
         startUpdating() {
-            setTimeout(() => this.loadItems(), 1500);
-            this.updateInterval = setInterval(() => this.loadItems(), 15000);
+            this.dataHandler = (cache) => this.onDataUpdate(cache);
+            DataManager.subscribe(this.dataHandler);
+
+            if (DataManager.getLastUpdate() > 0) {
+                this.onDataUpdate(DataManager.cache);
+            }
         },
 
         stopUpdating() {
-            if (this.updateInterval) {
-                clearInterval(this.updateInterval);
-                this.updateInterval = null;
+            if (this.dataHandler) {
+                DataManager.unsubscribe(this.dataHandler);
+                this.dataHandler = null;
             }
+        },
+
+        onDataUpdate(cache) {
+            if (!cache.items) return;
+            this.processItemsData(cache.items);
         },
 
         closePanel() {
@@ -1820,21 +1904,7 @@
         isVisible: GM_getValue('playersOnMapVisible', true),
         STORAGE_KEY: 'playersOnMapPos',
         playerList: null,
-        updateInterval: null,
-
-        OTHERS_QUERY: `
-    query Others {
-        others {
-            id
-            name
-            lvl
-            x
-            y
-            profession
-            inBattle
-            src
-        }
-    }`,
+        dataHandler: null,
 
         PROFFESIONS_ICON: {
             'm': 'https://imgur.com/y9NE54X.png',
@@ -1866,6 +1936,7 @@
         toggle(enabled) {
             GM_setValue('playersOnMapEnabled', enabled);
             if (enabled) {
+                DataManager.start();
                 this.init();
                 this.startUpdating();
             } else {
@@ -2044,43 +2115,28 @@
             return list;
         },
 
-        async loadPlayers() {
-            const token = GraphQLManager.getToken();
-            console.log('[PlayersOnMap] Próba załadowania, token:', token ? 'JEST (' + token.substring(0, 15) + '...)' : 'BRAK');
-
-            if (!token) {
-                this.renderStatus('Czekam na token');
+        processPlayersData(othersData) {
+            const newOthers = othersData || [];
+            if (newOthers.length === 0) {
+                this.renderStatus('Brak graczy na mapie');
+                this.others = [];
                 return;
             }
 
-            try {
-                const data = await GraphQLManager.query(this.OTHERS_QUERY);
-                console.log('[PlayersOnMap] Otrzymano graczy:', data.others?.length || 0);
-                const newOthers = data.others || [];
-                if (newOthers.length === 0) {
-                    this.renderStatus('Brak graczy na mapie');
-                    this.items = [];
+            if (this.playerList && this.playerList.children.length === newOthers.length) {
+                const currentNames = Array.from(this.playerList.children).map(row =>
+                                                                              row.querySelector('span')?.textContent?.trim()
+                                                                             );
+                const newNames = newOthers.map(p => p.name);
+
+                if (JSON.stringify(currentNames.sort()) === JSON.stringify(newNames.sort())) {
                     return;
                 }
-
-                if (this.playerList && this.playerList.children.length === newOthers.length) {
-                    const currentNames = Array.from(this.playerList.children).map(row =>
-                                                                                  row.querySelector('span')?.textContent?.trim()
-                                                                                 );
-                    const newNames = newOthers.map(p => p.name);
-
-                    if (JSON.stringify(currentNames.sort()) === JSON.stringify(newNames.sort())) {
-                        return;
-                    }
-                }
-
-                this.others = newOthers;
-                this.sortPlayers();
-                this.renderPlayers();
-            } catch (e) {
-                console.error('[PlayersOnMap] Błąd:', e);
-                this.renderStatus('Błąd połączenia');
             }
+
+            this.others = newOthers;
+            this.sortPlayers();
+            this.renderPlayers();
         },
 
         sortPlayers() {
@@ -2253,15 +2309,24 @@
         },
 
         startUpdating() {
-            setTimeout(() => this.loadPlayers(), 2000);
-            this.updateInterval = setInterval(() => this.loadPlayers(), 15000);
+            this.dataHandler = (cache) => this.onDataUpdate(cache);
+            DataManager.subscribe(this.dataHandler);
+
+            if (DataManager.getLastUpdate() > 0) {
+                this.onDataUpdate(DataManager.cache);
+            }
         },
 
         stopUpdating() {
-            if (this.updateInterval) {
-                clearInterval(this.updateInterval);
-                this.updateInterval = null;
+            if (this.dataHandler) {
+                DataManager.unsubscribe(this.dataHandler);
+                this.dataHandler = null;
             }
+        },
+
+        onDataUpdate(cache) {
+            if (!cache.others) return;
+            this.processPlayersData(cache.others);
         },
 
         closePanel() {
@@ -5091,29 +5156,12 @@
         alertDisplayed: false,
         detectedHeroes: new Set(),
         detectedTitans: new Set(),
-        checkInterval: null,
-
-        HEROES_QUERY: `
-        query HeroesOnMap {
-            location {
-                id
-                name
-            }
-            npcs {
-                id
-                name
-                lvl
-                x
-                y
-                rank
-                src
-            }
-        }
-    `,
+        dataHandler: null,
 
         toggle(enabled) {
             GM_setValue('heroDetectorEnabled', enabled);
             if (enabled) {
+                DataManager.start();
                 this.startChecking();
             } else {
                 this.stopChecking();
@@ -5121,69 +5169,63 @@
         },
 
         startChecking() {
-            setTimeout(() => this.checkForHeroes(), 2500);
-            this.checkInterval = setInterval(() => this.checkForHeroes(), 10000);
+            this.dataHandler = (cache) => this.onDataUpdate(cache);
+            DataManager.subscribe(this.dataHandler);
+
+            if (DataManager.getLastUpdate() > 0) {
+                this.onDataUpdate(DataManager.cache);
+            }
         },
 
         stopChecking() {
-            if (this.checkInterval) {
-                clearInterval(this.checkInterval);
-                this.checkInterval = null;
+            if (this.dataHandler) {
+                DataManager.unsubscribe(this.dataHandler);
+                this.dataHandler = null;
             }
         },
 
-        async checkForHeroes() {
-            const token = GraphQLManager.getToken();
-            if (!token) {
-                console.log('[HeroDetector] Czekam na token');
-                return;
-            }
+        onDataUpdate(cache) {
+            if (!cache.npcs || !cache.location) return;
+            this.checkForHeroes(cache.npcs, cache.location);
+        },
 
-            try {
-                const data = await GraphQLManager.query(this.HEROES_QUERY);
-                const location = data.location;
-                const npcs = data.npcs || [];
+        checkForHeroes(npcs, location) {
+            let foundEntities = [];
 
-                let foundEntities = [];
+            npcs.forEach(npc => {
+                const rank = npc.rank?.toUpperCase();
 
-                npcs.forEach(npc => {
-                    const rank = npc.rank?.toUpperCase();
-
-                    if (rank === 'HERO' && !this.detectedHeroes.has(npc.name)) {
-                        this.detectedHeroes.add(npc.name);
-                        foundEntities.push({
-                            name: npc.name,
-                            level: npc.lvl || '??',
-                            type: 'hero',
-                            x: npc.x,
-                            y: npc.y,
-                            src: npc.src,
-                            locationId: location.id,
-                            locationName: location.name
-                        });
-                    }
-
-                    if (rank === 'TITAN' && !this.detectedTitans.has(npc.name)) {
-                        this.detectedTitans.add(npc.name);
-                        foundEntities.push({
-                            name: npc.name,
-                            level: npc.lvl || '??',
-                            type: 'titan',
-                            x: npc.x,
-                            y: npc.y,
-                            src: npc.src,
-                            locationId: location.id,
-                            locationName: location.name
-                        });
-                    }
-                });
-
-                if (foundEntities.length > 0 && !this.alertDisplayed) {
-                    this.showAlert(foundEntities);
+                if (rank === 'HERO' && !this.detectedHeroes.has(npc.name)) {
+                    this.detectedHeroes.add(npc.name);
+                    foundEntities.push({
+                        name: npc.name,
+                        level: npc.lvl || '??',
+                        type: 'hero',
+                        x: npc.x,
+                        y: npc.y,
+                        src: npc.src,
+                        locationId: location?.id,
+                        locationName: location?.name
+                    });
                 }
 
-            } catch (e) {
-                console.error('[HeroDetector] Błąd:', e);
+                if (rank === 'TITAN' && !this.detectedTitans.has(npc.name)) {
+                    this.detectedTitans.add(npc.name);
+                    foundEntities.push({
+                        name: npc.name,
+                        level: npc.lvl || '??',
+                        type: 'titan',
+                        x: npc.x,
+                        y: npc.y,
+                        src: npc.src,
+                        locationId: location?.id,
+                        locationName: location?.name
+                    });
+                }
+            });
+
+            if (foundEntities.length > 0 && !this.alertDisplayed) {
+                this.showAlert(foundEntities);
             }
         },
 
@@ -7330,6 +7372,17 @@
             console.log('[Init] BattleMonitor uruchomiony');
         }
 
+        // Uruchom centralny DataManager - jedno zapytanie dla wszystkich modułów
+        const needsDataManager = GM_getValue('npcsOnMapEnabled', false) ||
+              GM_getValue('itemsOnMapEnabled', false) ||
+              GM_getValue('playersOnMapEnabled', false) ||
+              GM_getValue('heroDetectorEnabled', false);
+
+        if (needsDataManager) {
+            DataManager.start();
+            console.log('[Init] DataManager uruchomiony');
+        }
+
         const observer = new MutationObserver((mutations, obs) => {
             const container = document.querySelector('#panel .small-buttons');
             if (container) {
@@ -7341,6 +7394,5 @@
         setTimeout(() => WelcomePanel.show(), 1000);
         observer.observe(document.body, { childList: true, subtree: true });
         ADDONS.forEach(addon => addon.onToggle(GM_getValue(addon.id, addon.default)));
-        HeroDetector.checkForHeroes();
     });
 })();
