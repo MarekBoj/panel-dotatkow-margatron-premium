@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      4.5.5
+// @version      4.5.6
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -483,7 +483,7 @@
                 .replace(/[\u0300-\u036f]/g, "")
                 .trim();
 
-                return normalized.includes(monsterNormalized) || monsterNormalized.includes(normalized);
+                return normalized === monsterNormalized;
             });
 
             return found || { lvl: '??', rank: 'UNKNOWN' };
@@ -3052,8 +3052,8 @@
                 fontFamily: 'Times New Roman',
                 fontSize: '13px',
                 zIndex: '9998',
-                minWidth: '250px',
-                maxWidth: '500px',
+                minWidth: '400px',
+                maxWidth: '650px',
                 maxHeight: '80vh',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.7)',
                 border: '2px solid #1a4d0d',
@@ -3415,17 +3415,155 @@
                 legendary: GM_getValue('highlightColorLegendary', '#d1249e')
             };
 
-            const killsSpan = document.createElement('span');
-            killsSpan.innerHTML = `<strong style="color: #ffffff;">Ubicia:</strong> <span style="color: #fff;">${data.kills}</span>`;
+            const createEditableStat = (label, value, color, statKey) => {
+                const container = document.createElement('span');
+                Object.assign(container.style, {
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                });
 
-            const uniqueSpan = document.createElement('span');
-            uniqueSpan.innerHTML = `<strong style="color: ${itemColors.unique};">Unikat:</strong> <span style="color: #fff;">${data.unique}</span>`;
+                const labelSpan = document.createElement('strong');
+                labelSpan.textContent = label + ':';
+                labelSpan.style.color = color;
 
-            const heroicSpan = document.createElement('span');
-            heroicSpan.innerHTML = `<strong style="color: ${itemColors.heroic};">Heroiczny:</strong> <span style="color: #fff;">${data.heroic}</span>`;
+                const minusBtn = document.createElement('button');
+                minusBtn.textContent = '-';
+                Object.assign(minusBtn.style, {
+                    width: '18px',
+                    height: '18px',
+                    padding: '0',
+                    background: 'rgba(255,100,100,0.2)',
+                    border: '1px solid #ff6666',
+                    color: '#ff6666',
+                    cursor: 'pointer',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    lineHeight: '1',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease'
+                });
+                minusBtn.addEventListener('mouseenter', () => {
+                    minusBtn.style.background = 'rgba(255,100,100,0.4)';
+                });
+                minusBtn.addEventListener('mouseleave', () => {
+                    minusBtn.style.background = 'rgba(255,100,100,0.2)';
+                });
+                minusBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (data[statKey] > 0) {
+                        data[statKey]--;
+                        this.stats.set(data.name, data);
+                        this.saveStats();
+                        this.updatePanel();
+                    }
+                });
 
-            const legendarySpan = document.createElement('span');
-            legendarySpan.innerHTML = `<strong style="color: ${itemColors.legendary};">Legendarny:</strong> <span style="color: #fff;">${data.legendary}</span>`;
+                const valueSpan = document.createElement('span');
+                valueSpan.textContent = value;
+                Object.assign(valueSpan.style, {
+                    color: '#fff',
+                    minWidth: '24px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    padding: '2px 4px',
+                    borderRadius: '4px',
+                    transition: 'all 0.2s ease'
+                });
+                valueSpan.addEventListener('mouseenter', () => {
+                    valueSpan.style.background = 'rgba(255,255,255,0.1)';
+                });
+                valueSpan.addEventListener('mouseleave', () => {
+                    valueSpan.style.background = 'transparent';
+                });
+                valueSpan.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.value = data[statKey];
+                    input.min = '0';
+                    Object.assign(input.style, {
+                        width: '50px',
+                        padding: '2px 4px',
+                        background: '#0a2505',
+                        border: '1px solid #1a4d0d',
+                        color: '#fff',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        textAlign: 'center'
+                    });
+
+                    const saveValue = () => {
+                        const newValue = parseInt(input.value) || 0;
+                        data[statKey] = Math.max(0, newValue);
+                        this.stats.set(data.name, data);
+                        this.saveStats();
+                        this.updatePanel();
+                    };
+
+                    input.addEventListener('blur', saveValue);
+                    input.addEventListener('keydown', (ev) => {
+                        if (ev.key === 'Enter') {
+                            saveValue();
+                        } else if (ev.key === 'Escape') {
+                            this.updatePanel();
+                        }
+                    });
+
+                    valueSpan.innerHTML = '';
+                    valueSpan.appendChild(input);
+                    input.focus();
+                    input.select();
+                });
+
+                const plusBtn = document.createElement('button');
+                plusBtn.textContent = '+';
+                Object.assign(plusBtn.style, {
+                    width: '18px',
+                    height: '18px',
+                    padding: '0',
+                    background: 'rgba(100,255,100,0.2)',
+                    border: '1px solid #66ff66',
+                    color: '#66ff66',
+                    cursor: 'pointer',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    lineHeight: '1',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease'
+                });
+                plusBtn.addEventListener('mouseenter', () => {
+                    plusBtn.style.background = 'rgba(100,255,100,0.4)';
+                });
+                plusBtn.addEventListener('mouseleave', () => {
+                    plusBtn.style.background = 'rgba(100,255,100,0.2)';
+                });
+                plusBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    data[statKey]++;
+                    this.stats.set(data.name, data);
+                    this.saveStats();
+                    this.updatePanel();
+                });
+
+                container.appendChild(labelSpan);
+                container.appendChild(minusBtn);
+                container.appendChild(valueSpan);
+                container.appendChild(plusBtn);
+
+                return container;
+            };
+
+            const killsSpan = createEditableStat('Ubicia', data.kills, '#ffffff', 'kills');
+            const uniqueSpan = createEditableStat('Unikat', data.unique, itemColors.unique, 'unique');
+            const heroicSpan = createEditableStat('Heroiczny', data.heroic, itemColors.heroic, 'heroic');
+            const legendarySpan = createEditableStat('Legendarny', data.legendary, itemColors.legendary, 'legendary');
 
             statsRow.appendChild(killsSpan);
             statsRow.appendChild(uniqueSpan);
@@ -3765,6 +3903,10 @@
             document.body.appendChild(this.container);
             this.restorePosition();
             this.makeDraggable(this.container);
+
+            if (this.timers.size === 0) {
+                this.renderStatus('Brak potworów');
+            }
         },
 
         handleBattleEvent(event, data) {
@@ -3799,8 +3941,8 @@
 
             for (const mob of mobs) {
                 if (this.timers.has(mob.name)) {
-                    console.log('[Minutnik] Timer dla', mob.name, 'już istnieje - pomijam');
-                    continue;
+                    console.log('[Minutnik] Timer dla', mob.name, 'już istnieje - resetuję');
+                    this.timers.delete(mob.name);
                 }
 
                 const { minTime, maxTime } = this.calculateRespawnTime(mob.level, mob.rank);
@@ -3911,7 +4053,35 @@
             }
         },
 
+        checkNpcsOnMap() {
+            if (!GM_getValue('npcsOnMapEnabled', false)) return;
+            if (!NpcsOnMap.npcs || NpcsOnMap.npcs.length === 0) return;
+
+            const npcsOnMapNames = NpcsOnMap.npcs.map(npc => npc.name.toLowerCase());
+            const timersToRemove = [];
+
+            for (const [mobName, data] of this.timers.entries()) {
+                if (npcsOnMapNames.includes(mobName.toLowerCase())) {
+                    timersToRemove.push(mobName);
+                    console.log('[Minutnik] Mob pojawil sie na mapie:', mobName);
+                }
+            }
+
+            if (timersToRemove.length > 0) {
+                const audioUrl = GM_getValue('audioUrlMinutnik', 'https://files.catbox.moe/od2lcz.mp3');
+                Utils.playAudio(audioUrl);
+
+                for (const mobName of timersToRemove) {
+                    this.timers.delete(mobName);
+                }
+
+                this.saveTimers();
+            }
+        },
+
         updateAllTimers() {
+            this.checkNpcsOnMap();
+
             const now = Date.now();
             this.timersList.innerHTML = '';
 
@@ -3945,10 +4115,7 @@
             if (this.timers.size === 0) {
                 clearInterval(this.globalInterval);
                 this.globalInterval = null;
-                this.container.style.display = 'none';
-                this.timersList.innerHTML = '';
-            } else {
-                this.container.style.display = 'block';
+                this.renderStatus('Brak potworów');
             }
 
             this.saveTimers();
@@ -3961,6 +4128,15 @@
             }
         },
 
+        renderStatus(message) {
+            if (!this.timersList) return;
+            this.timersList.innerHTML = `
+                <div style="text-align: center; padding: 10px; color: #888;">
+                    ${message}
+                </div>
+            `;
+        },
+
         createContainer() {
             const container = document.createElement('div');
             Object.assign(container.style, {
@@ -3968,7 +4144,7 @@
                 backgroundColor: '#0b2505', borderRadius: '8px', color: 'white',
                 fontFamily: 'times-new-roman', fontSize: '14px', zIndex: '9999',
                 minWidth: '200px', boxShadow: '0 2px 15px rgba(0,0,0,0.7)',
-                border: '2px solid #1a4d0d', display: 'none', cursor: 'grab'
+                border: '2px solid #1a4d0d', display: 'block', cursor: 'grab'
             });
 
             const header = document.createElement('minutnik-header');
