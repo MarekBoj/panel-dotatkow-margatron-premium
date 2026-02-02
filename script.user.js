@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      4.5.6
+// @version      4.5.7
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -3315,6 +3315,43 @@
                 this.updatePanel();
             });
 
+            const settingsBtn = document.createElement('button');
+            settingsBtn.textContent = '\u2699\uFE0F';
+            Object.assign(settingsBtn.style, {
+                position: 'absolute',
+                top: '6px',
+                right: '30px',
+                background: 'rgba(76, 175, 80, 0.2)',
+                border: '1px solid #4CAF50',
+                color: '#4CAF50',
+                cursor: 'pointer',
+                padding: '3px 5px',
+                borderRadius: '4px',
+                fontSize: '10px',
+                transition: 'all 0.2s ease',
+                lineHeight: '1',
+                width: '20px',
+                height: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+            });
+
+            settingsBtn.addEventListener('mouseenter', () => {
+                settingsBtn.style.background = 'rgba(76, 175, 80, 0.4)';
+                settingsBtn.style.transform = 'scale(1.1) rotate(90deg)';
+            });
+
+            settingsBtn.addEventListener('mouseleave', () => {
+                settingsBtn.style.background = 'rgba(76, 175, 80, 0.2)';
+                settingsBtn.style.transform = 'scale(1) rotate(0deg)';
+            });
+
+            settingsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.openEditPopup(data);
+            });
+
             const leftColumn = document.createElement('div');
             Object.assign(leftColumn.style, {
                 display: 'flex',
@@ -3415,7 +3452,7 @@
                 legendary: GM_getValue('highlightColorLegendary', '#d1249e')
             };
 
-            const createEditableStat = (label, value, color, statKey) => {
+            const createStatDisplay = (label, value, color) => {
                 const container = document.createElement('span');
                 Object.assign(container.style, {
                     display: 'flex',
@@ -3427,143 +3464,24 @@
                 labelSpan.textContent = label + ':';
                 labelSpan.style.color = color;
 
-                const minusBtn = document.createElement('button');
-                minusBtn.textContent = '-';
-                Object.assign(minusBtn.style, {
-                    width: '18px',
-                    height: '18px',
-                    padding: '0',
-                    background: 'rgba(255,100,100,0.2)',
-                    border: '1px solid #ff6666',
-                    color: '#ff6666',
-                    cursor: 'pointer',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    lineHeight: '1',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.2s ease'
-                });
-                minusBtn.addEventListener('mouseenter', () => {
-                    minusBtn.style.background = 'rgba(255,100,100,0.4)';
-                });
-                minusBtn.addEventListener('mouseleave', () => {
-                    minusBtn.style.background = 'rgba(255,100,100,0.2)';
-                });
-                minusBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (data[statKey] > 0) {
-                        data[statKey]--;
-                        this.stats.set(data.name, data);
-                        this.saveStats();
-                        this.updatePanel();
-                    }
-                });
-
                 const valueSpan = document.createElement('span');
                 valueSpan.textContent = value;
                 Object.assign(valueSpan.style, {
                     color: '#fff',
-                    minWidth: '24px',
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    padding: '2px 4px',
-                    borderRadius: '4px',
-                    transition: 'all 0.2s ease'
-                });
-                valueSpan.addEventListener('mouseenter', () => {
-                    valueSpan.style.background = 'rgba(255,255,255,0.1)';
-                });
-                valueSpan.addEventListener('mouseleave', () => {
-                    valueSpan.style.background = 'transparent';
-                });
-                valueSpan.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const input = document.createElement('input');
-                    input.type = 'number';
-                    input.value = data[statKey];
-                    input.min = '0';
-                    Object.assign(input.style, {
-                        width: '50px',
-                        padding: '2px 4px',
-                        background: '#0a2505',
-                        border: '1px solid #1a4d0d',
-                        color: '#fff',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        textAlign: 'center'
-                    });
-
-                    const saveValue = () => {
-                        const newValue = parseInt(input.value) || 0;
-                        data[statKey] = Math.max(0, newValue);
-                        this.stats.set(data.name, data);
-                        this.saveStats();
-                        this.updatePanel();
-                    };
-
-                    input.addEventListener('blur', saveValue);
-                    input.addEventListener('keydown', (ev) => {
-                        if (ev.key === 'Enter') {
-                            saveValue();
-                        } else if (ev.key === 'Escape') {
-                            this.updatePanel();
-                        }
-                    });
-
-                    valueSpan.innerHTML = '';
-                    valueSpan.appendChild(input);
-                    input.focus();
-                    input.select();
-                });
-
-                const plusBtn = document.createElement('button');
-                plusBtn.textContent = '+';
-                Object.assign(plusBtn.style, {
-                    width: '18px',
-                    height: '18px',
-                    padding: '0',
-                    background: 'rgba(100,255,100,0.2)',
-                    border: '1px solid #66ff66',
-                    color: '#66ff66',
-                    cursor: 'pointer',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    lineHeight: '1',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.2s ease'
-                });
-                plusBtn.addEventListener('mouseenter', () => {
-                    plusBtn.style.background = 'rgba(100,255,100,0.4)';
-                });
-                plusBtn.addEventListener('mouseleave', () => {
-                    plusBtn.style.background = 'rgba(100,255,100,0.2)';
-                });
-                plusBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    data[statKey]++;
-                    this.stats.set(data.name, data);
-                    this.saveStats();
-                    this.updatePanel();
+                    minWidth: '20px',
+                    textAlign: 'center'
                 });
 
                 container.appendChild(labelSpan);
-                container.appendChild(minusBtn);
                 container.appendChild(valueSpan);
-                container.appendChild(plusBtn);
 
                 return container;
             };
 
-            const killsSpan = createEditableStat('Ubicia', data.kills, '#ffffff', 'kills');
-            const uniqueSpan = createEditableStat('Unikat', data.unique, itemColors.unique, 'unique');
-            const heroicSpan = createEditableStat('Heroiczny', data.heroic, itemColors.heroic, 'heroic');
-            const legendarySpan = createEditableStat('Legendarny', data.legendary, itemColors.legendary, 'legendary');
+            const killsSpan = createStatDisplay('Ubicia', data.kills, '#ffffff');
+            const uniqueSpan = createStatDisplay('Unikat', data.unique, itemColors.unique);
+            const heroicSpan = createStatDisplay('Heroiczny', data.heroic, itemColors.heroic);
+            const legendarySpan = createStatDisplay('Legendarny', data.legendary, itemColors.legendary);
 
             statsRow.appendChild(killsSpan);
             statsRow.appendChild(uniqueSpan);
@@ -3575,6 +3493,7 @@
 
             row.appendChild(leftColumn);
             row.appendChild(rightColumn);
+            row.appendChild(settingsBtn);
             row.appendChild(deleteBtn);
 
             return row;
@@ -3604,6 +3523,195 @@
                     el.style.cursor = 'grab';
                 }
             });
+        },
+
+        openEditPopup(data) {
+            document.getElementById('killcounter-edit-popup')?.remove();
+
+            const itemColors = {
+                unique: GM_getValue('highlightColorUnique', '#f5b536'),
+                heroic: GM_getValue('highlightColorHeroic', '#3193f5'),
+                legendary: GM_getValue('highlightColorLegendary', '#d1249e')
+            };
+
+            const popup = document.createElement('div');
+            popup.id = 'killcounter-edit-popup';
+            Object.assign(popup.style, {
+                position: 'fixed',
+                padding: '15px',
+                borderRadius: '12px',
+                border: '2px solid #1a4d0d',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.7)',
+                zIndex: '10003',
+                color: 'white',
+                fontSize: '13px',
+                width: '300px',
+                cursor: 'grab',
+                background: '#0b2505',
+                fontFamily: 'times-new-roman',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)'
+            });
+
+            const title = document.createElement('div');
+            title.textContent = '\u2699\uFE0F ' + data.name;
+            Object.assign(title.style, {
+                fontWeight: 'bold',
+                fontSize: '16px',
+                marginBottom: '12px',
+                paddingBottom: '10px',
+                borderBottom: '1px solid #1a4d0d',
+                userSelect: 'none'
+            });
+            popup.appendChild(title);
+
+            const createInputRow = (label, value, color, statKey) => {
+                const wrapper = document.createElement('div');
+                Object.assign(wrapper.style, {
+                    marginBottom: '12px',
+                    padding: '10px',
+                    background: '#061d02',
+                    borderRadius: '8px',
+                    border: '1px solid #1a4d0d'
+                });
+
+                const labelEl = document.createElement('label');
+                labelEl.textContent = label;
+                Object.assign(labelEl.style, {
+                    display: 'block',
+                    marginBottom: '6px',
+                    fontWeight: '600',
+                    fontSize: '12px',
+                    color: color
+                });
+
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.min = '0';
+                input.value = value;
+                input.dataset.statKey = statKey;
+                Object.assign(input.style, {
+                    width: 'calc(100% - 24px)',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #1a4d0d',
+                    background: '#10240a',
+                    color: 'white',
+                    fontSize: '12px',
+                    fontFamily: 'times-new-roman',
+                    transition: 'all 0.2s ease'
+                });
+
+                input.addEventListener('focus', () => {
+                    input.style.borderColor = '#4CAF50';
+                    input.style.background = '#0a2505';
+                });
+                input.addEventListener('blur', () => {
+                    input.style.borderColor = '#1a4d0d';
+                    input.style.background = '#10240a';
+                });
+
+                wrapper.appendChild(labelEl);
+                wrapper.appendChild(input);
+                return wrapper;
+            };
+
+            const inputsContainer = document.createElement('div');
+            inputsContainer.appendChild(createInputRow('Liczba ubic', data.kills, '#ffffff', 'kills'));
+            inputsContainer.appendChild(createInputRow('Unikaty', data.unique, itemColors.unique, 'unique'));
+            inputsContainer.appendChild(createInputRow('Heroiczne', data.heroic, itemColors.heroic, 'heroic'));
+            inputsContainer.appendChild(createInputRow('Legendarne', data.legendary, itemColors.legendary, 'legendary'));
+            popup.appendChild(inputsContainer);
+
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = 'Zapisz i zamknij';
+            Object.assign(closeBtn.style, {
+                marginTop: '12px',
+                background: '#4CAF50',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '8px',
+                color: 'white',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'block',
+                width: '100%',
+                fontSize: '13px',
+                transition: 'all 0.2s ease',
+                fontFamily: 'times-new-roman'
+            });
+
+            closeBtn.addEventListener('mouseenter', () => {
+                closeBtn.style.background = '#66bb6a';
+                closeBtn.style.transform = 'translateY(-2px)';
+            });
+            closeBtn.addEventListener('mouseleave', () => {
+                closeBtn.style.background = '#4CAF50';
+                closeBtn.style.transform = 'translateY(0)';
+            });
+
+            closeBtn.addEventListener('click', () => {
+                const inputs = popup.querySelectorAll('input[data-stat-key]');
+                inputs.forEach(input => {
+                    const key = input.dataset.statKey;
+                    const newValue = parseInt(input.value) || 0;
+                    data[key] = Math.max(0, newValue);
+                });
+                this.stats.set(data.name, data);
+                this.saveStats();
+                this.updatePanel();
+                popup.remove();
+            });
+
+            popup.appendChild(closeBtn);
+            document.body.appendChild(popup);
+
+            this.makeDraggablePopup(popup);
+        },
+
+        makeDraggablePopup(el) {
+            let isDragging = false;
+            let startX, startY;
+            let initialLeft, initialTop;
+
+            const header = el.querySelector('div');
+
+            header.addEventListener('mousedown', (e) => {
+                if (e.target.tagName === 'BUTTON' ||
+                    e.target.tagName === 'INPUT' ||
+                    e.target.closest('button') ||
+                    e.target.closest('input')) return;
+
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                const rect = el.getBoundingClientRect();
+                el.style.transform = 'none';
+                el.style.left = rect.left + 'px';
+                el.style.top = rect.top + 'px';
+                header.style.cursor = 'grabbing';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+
+                el.style.left = (initialLeft + deltaX) + 'px';
+                el.style.top = (initialTop + deltaY) + 'px';
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    header.style.cursor = 'grab';
+                }
+            });
+
+            const rect = el.getBoundingClientRect();
+            initialLeft = rect.left;
+            initialTop = rect.top;
         },
 
         openPanel() {
