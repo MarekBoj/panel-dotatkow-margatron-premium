@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      4.5.4
+// @version      4.5.5
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -60,7 +60,7 @@
                 console.log('[AuthTokenFetch] Token gotowy:', token);
                 authToken = token;
             }
-        }, 500);
+        }, 100);
     }
 
     waitForToken();
@@ -103,138 +103,6 @@
                 throw e;
             }
         }
-    };
-
-    // ======================== CENTRALNY DATA MANAGER ========================
-    // Jeden centralny system pobierania danych - jedno zapytanie dla wszystkich modułów
-    const DataManager = {
-        cache: {
-            npcs: null,
-            items: null,
-            others: null,
-            location: null,
-            lastUpdate: 0
-        },
-        subscribers: new Set(),
-        updateInterval: null,
-        UPDATE_INTERVAL: 10000, // Jedno zapytanie co 10 sekund
-        isUpdating: false,
-
-        // Połączone zapytanie - wszystkie dane w jednym request
-        COMBINED_QUERY: `
-            query CombinedData {
-                npcs {
-                    id
-                    name
-                    rank
-                    lvl
-                    src
-                    x
-                    y
-                }
-                itemsOnMap {
-                    id
-                    name
-                    rarity
-                    src
-                    mapLocation {
-                        x
-                        y
-                    }
-                }
-                others {
-                    id
-                    name
-                    lvl
-                    x
-                    y
-                    profession
-                    inBattle
-                    src
-                }
-                location {
-                    id
-                    name
-                }
-            }
-        `,
-
-        subscribe(callback) {
-            this.subscribers.add(callback);
-        },
-
-        unsubscribe(callback) {
-            this.subscribers.delete(callback);
-        },
-
-        notifySubscribers() {
-            this.subscribers.forEach(callback => {
-                try {
-                    callback(this.cache);
-                } catch (e) {
-                    console.error('[DataManager] Błąd w subscriber:', e);
-                }
-            });
-        },
-
-        start() {
-            if (this.updateInterval) return;
-
-            console.log('[DataManager] Uruchamiam centralny system pobierania danych');
-
-            // Pierwsze pobranie po 1 sekundzie
-            setTimeout(() => this.fetchData(), 1000);
-
-            // Następne co UPDATE_INTERVAL
-            this.updateInterval = setInterval(() => this.fetchData(), this.UPDATE_INTERVAL);
-        },
-
-        stop() {
-            if (this.updateInterval) {
-                clearInterval(this.updateInterval);
-                this.updateInterval = null;
-            }
-        },
-
-        async fetchData() {
-            if (this.isUpdating) return;
-
-            const token = GraphQLManager.getToken();
-            if (!token) {
-                return;
-            }
-
-            this.isUpdating = true;
-
-            try {
-                const data = await GraphQLManager.query(this.COMBINED_QUERY);
-
-                this.cache = {
-                    npcs: data.npcs || [],
-                    items: data.itemsOnMap || [],
-                    others: data.others || [],
-                    location: data.location || null,
-                    lastUpdate: Date.now()
-                };
-
-                console.log('[DataManager] Dane zaktualizowane - NPCs:', this.cache.npcs.length,
-                            'Items:', this.cache.items.length,
-                            'Others:', this.cache.others.length);
-
-                this.notifySubscribers();
-            } catch (e) {
-                console.error('[DataManager] Błąd pobierania danych:', e);
-            } finally {
-                this.isUpdating = false;
-            }
-        },
-
-        // Metody dostępu do cache
-        getNpcs() { return this.cache.npcs || []; },
-        getItems() { return this.cache.items || []; },
-        getOthers() { return this.cache.others || []; },
-        getLocation() { return this.cache.location; },
-        getLastUpdate() { return this.cache.lastUpdate; }
     };
 
     // ======================== KONFIGURACJA ========================
@@ -638,7 +506,7 @@
         },
 
         startMonitoring() {
-            intervalManager.set('battleMonitor', () => this.checkBattle(), 250);
+            intervalManager.set('battleMonitor', () => this.checkBattle(), 100);
             console.log('[BattleMonitor] Monitoring rozpoczęty');
         },
 
@@ -825,23 +693,16 @@
         },
 
         startWatching() {
-            let debounceTimeout = null;
-
             this.observer = new MutationObserver(() => {
-                // Debounce - nie sprawdzaj przy każdej zmianie DOM
-                if (debounceTimeout) return;
-                debounceTimeout = setTimeout(() => {
-                    debounceTimeout = null;
-                    const auctionDialog = document.querySelector('[data-v-21c37600].create-auction');
-                    if (auctionDialog && !auctionDialog.dataset.auctionHelperProcessed) {
-                        this.fillAuctionForm(auctionDialog);
-                    }
-                }, 200);
+                const auctionDialog = document.querySelector('[data-v-21c37600].create-auction');
+                if (auctionDialog && !auctionDialog.dataset.auctionHelperProcessed) {
+                    this.fillAuctionForm(auctionDialog);
+                }
             });
 
             this.observer.observe(document.body, {
                 childList: true,
-                subtree: false // Zmniejsz zakres obserwacji
+                subtree: true
             });
 
             const existingDialog = document.querySelector('[data-v-21c37600].create-auction');
@@ -915,7 +776,21 @@
         isVisible: GM_getValue('npcsOnMapVisible', true),
         STORAGE_KEY: 'npcsOnMapPos',
         npcsList: null,
-        dataHandler: null,
+        updateInterval: null,
+
+        NPCS_QUERY: `
+        query npcs {
+            npcs {
+                id
+                name
+                rank
+                lvl
+                src
+                x
+                y
+            }
+        }
+    `,
 
         RANK_ORDER: {
             'TITAN': 0,
@@ -947,7 +822,6 @@
         toggle(enabled) {
             GM_setValue('npcsOnMapEnabled', enabled);
             if (enabled) {
-                DataManager.start(); // Uruchom DataManager jeśli nie jest uruchomiony
                 this.init();
                 this.startUpdating();
             } else {
@@ -1196,78 +1070,61 @@
             return list;
         },
 
-        processNpcsData(npcsData) {
-            let newNpcs = npcsData || [];
-            const filterName = GM_getValue('npcsFilterName', '').toLowerCase().trim();
-            const filterRank = GM_getValue('npcsFilterRank', '');
-            const filterMinLvl = parseInt(GM_getValue('npcsFilterMinLvl', '0'));
-            const filterMaxLvl = parseInt(GM_getValue('npcsFilterMaxLvl', '999'));
-
-            newNpcs = newNpcs.filter(npc => {
-                if (filterName && !npc.name.toLowerCase().includes(filterName)) {
-                    return false;
-                }
-
-                if (filterRank && npc.rank !== filterRank) {
-                    return false;
-                }
-
-                const npcLvl = parseInt(npc.lvl) || 0;
-                if (npcLvl < filterMinLvl || npcLvl > filterMaxLvl) {
-                    return false;
-                }
-
-                return true;
-            });
-
-            if (newNpcs.length === 0) {
-                this.renderStatus('Brak postaci spełniających kryteria');
-                this.npcs = [];
+        async loadNpcs() {
+            const token = GraphQLManager.getToken();
+            console.log('[NpcsOnMap] Próba załadowania, token:', token ? 'Jest (' + token.substring(0, 15) + '...)' : 'Brak');
+            if (!token) {
+                this.renderStatus('Czekam na token');
                 return;
             }
 
-            if (this.npcsList && this.npcsList.children.length === newNpcs.length) {
-                const currentIds = this.npcs.map(npc => npc.id).sort();
-                const newIds = newNpcs.map(npc => npc.id).sort();
+            try {
+                const data = await GraphQLManager.query(this.NPCS_QUERY);
+                console.log('[NpcsOnMap] Na mapie jest postaci:', data.npcs?.length || 0);
+                let newNpcs = data.npcs || [];
+                const filterName = GM_getValue('npcsFilterName', '').toLowerCase().trim();
+                const filterRank = GM_getValue('npcsFilterRank', '');
+                const filterMinLvl = parseInt(GM_getValue('npcsFilterMinLvl', '0'));
+                const filterMaxLvl = parseInt(GM_getValue('npcsFilterMaxLvl', '999'));
 
-                if (JSON.stringify(currentIds) === JSON.stringify(newIds)) {
+                newNpcs = newNpcs.filter(npc => {
+                    if (filterName && !npc.name.toLowerCase().includes(filterName)) {
+                        return false;
+                    }
+
+                    if (filterRank && npc.rank !== filterRank) {
+                        return false;
+                    }
+
+                    const npcLvl = parseInt(npc.lvl) || 0;
+                    if (npcLvl < filterMinLvl || npcLvl > filterMaxLvl) {
+                        return false;
+                    }
+
+                    return true;
+                });
+
+                if (newNpcs.length === 0) {
+                    this.renderStatus('Brak postaci spełniających kryteria');
+                    this.npcs = [];
                     return;
                 }
-            }
 
-            this.npcs = newNpcs;
-            this.sortNpcs();
-            this.renderNpcs();
+                if (this.npcsList && this.npcsList.children.length === newNpcs.length) {
+                    const currentIds = this.npcs.map(npc => npc.id).sort();
+                    const newIds = newNpcs.map(npc => npc.id).sort();
 
-            // Sprawdź czy któryś z NPC na mapie ma aktywny timer w Minutniku
-            this.checkMinutnikTimers(newNpcs);
-        },
-
-        checkMinutnikTimers(npcs) {
-            if (!GM_getValue('minutnikEnabled', false)) return;
-            if (!Minutnik || !Minutnik.timers) return;
-
-            let removedAny = false;
-
-            for (const npc of npcs) {
-                // Sprawdź czy istnieje timer dla tego NPC
-                if (Minutnik.timers.has(npc.name)) {
-                    console.log('[NpcsOnMap] NPC', npc.name, 'pojawił się na mapie - usuwam timer z minutnika');
-                    Minutnik.timers.delete(npc.name);
-                    removedAny = true;
+                    if (JSON.stringify(currentIds) === JSON.stringify(newIds)) {
+                        return;
+                    }
                 }
-            }
 
-            if (removedAny) {
-                // Odtwórz dźwięk z minutnika
-                const audioUrl = GM_getValue('audioUrlMinutnik', 'https://files.catbox.moe/od2lcz.mp3');
-                Utils.playAudio(audioUrl);
-
-                // Zapisz i zaktualizuj UI minutnika
-                Minutnik.saveTimers();
-                if (Minutnik.container && Minutnik.timersList) {
-                    Minutnik.updateAllTimers();
-                }
+                this.npcs = newNpcs;
+                this.sortNpcs();
+                this.renderNpcs();
+            } catch (e) {
+                console.error('[NpcsOnMap] Błąd:', e);
+                this.renderStatus('Błąd połączenia');
             }
         },
 
@@ -1453,26 +1310,15 @@
         },
 
         startUpdating() {
-            // Używamy centralnego DataManager zamiast własnych zapytań
-            this.dataHandler = (cache) => this.onDataUpdate(cache);
-            DataManager.subscribe(this.dataHandler);
-
-            // Jeśli są już dane w cache, użyj ich
-            if (DataManager.getLastUpdate() > 0) {
-                this.onDataUpdate(DataManager.cache);
-            }
+            setTimeout(() => this.loadNpcs(), 500);
+            this.updateInterval = setInterval(() => this.loadNpcs(), 3000);
         },
 
         stopUpdating() {
-            if (this.dataHandler) {
-                DataManager.unsubscribe(this.dataHandler);
-                this.dataHandler = null;
+            if (this.updateInterval) {
+                clearInterval(this.updateInterval);
+                this.updateInterval = null;
             }
-        },
-
-        onDataUpdate(cache) {
-            if (!cache.npcs) return;
-            this.processNpcsData(cache.npcs);
         },
 
         closePanel() {
@@ -1491,7 +1337,22 @@
         isVisible: GM_getValue('itemsOnMapVisible', true),
         STORAGE_KEY: 'itemsOnMapPos',
         itemsList: null,
-        dataHandler: null,
+        updateInterval: null,
+
+        ITEMS_QUERY: `
+        query Items {
+            itemsOnMap {
+                id
+                name
+                rarity
+                src
+                mapLocation {
+                   x
+                   y
+                }
+            }
+        }
+    `,
 
         RARITY_ORDER: {
             'artefact': 0,
@@ -1514,7 +1375,6 @@
         toggle(enabled) {
             GM_setValue('itemsOnMapEnabled', enabled);
             if (enabled) {
-                DataManager.start();
                 this.init();
                 this.startUpdating();
             } else {
@@ -1693,26 +1553,40 @@
             return list;
         },
 
-        processItemsData(itemsData) {
-            const newItems = itemsData || [];
-            if (newItems.length === 0) {
-                this.renderStatus('Brak przedmiotów na mapie');
-                this.items = [];
+        async loadItems() {
+            const token = GraphQLManager.getToken();
+            console.log('[ItemsOnMap] Próba załadowania, token:', token ? 'Jest (' + token.substring(0, 15) + '...)' : 'Brak');
+            if (!token) {
+                this.renderStatus('Czekam na token');
                 return;
             }
 
-            if (this.itemsList && this.itemsList.children.length === newItems.length) {
-                const currentIds = this.items.map(item => item.id).sort();
-                const newIds = newItems.map(item => item.id).sort();
-
-                if (JSON.stringify(currentIds) === JSON.stringify(newIds)) {
+            try {
+                const data = await GraphQLManager.query(this.ITEMS_QUERY);
+                console.log('[ItemsOnMap] Na mapie jest przedmiotów:', data.itemsOnMap?.length || 0);
+                const newItems = data.itemsOnMap || [];
+                if (newItems.length === 0) {
+                    this.renderStatus('Brak przedmiotów na mapie');
+                    this.items = [];
                     return;
                 }
-            }
 
-            this.items = newItems;
-            this.sortItems();
-            this.renderItems();
+                if (this.itemsList && this.itemsList.children.length === newItems.length) {
+                    const currentIds = this.items.map(item => item.id).sort();
+                    const newIds = newItems.map(item => item.id).sort();
+
+                    if (JSON.stringify(currentIds) === JSON.stringify(newIds)) {
+                        return;
+                    }
+                }
+
+                this.items = newItems;
+                this.sortItems();
+                this.renderItems();
+            } catch (e) {
+                console.error('[ItemsOnMap] Błąd:', e);
+                this.renderStatus('Błąd połączenia');
+            }
         },
 
         sortItems() {
@@ -1868,24 +1742,15 @@
         },
 
         startUpdating() {
-            this.dataHandler = (cache) => this.onDataUpdate(cache);
-            DataManager.subscribe(this.dataHandler);
-
-            if (DataManager.getLastUpdate() > 0) {
-                this.onDataUpdate(DataManager.cache);
-            }
+            setTimeout(() => this.loadItems(), 500);
+            this.updateInterval = setInterval(() => this.loadItems(), 3000);
         },
 
         stopUpdating() {
-            if (this.dataHandler) {
-                DataManager.unsubscribe(this.dataHandler);
-                this.dataHandler = null;
+            if (this.updateInterval) {
+                clearInterval(this.updateInterval);
+                this.updateInterval = null;
             }
-        },
-
-        onDataUpdate(cache) {
-            if (!cache.items) return;
-            this.processItemsData(cache.items);
         },
 
         closePanel() {
@@ -1904,7 +1769,21 @@
         isVisible: GM_getValue('playersOnMapVisible', true),
         STORAGE_KEY: 'playersOnMapPos',
         playerList: null,
-        dataHandler: null,
+        updateInterval: null,
+
+        OTHERS_QUERY: `
+    query Others {
+        others {
+            id
+            name
+            lvl
+            x
+            y
+            profession
+            inBattle
+            src
+        }
+    }`,
 
         PROFFESIONS_ICON: {
             'm': 'https://imgur.com/y9NE54X.png',
@@ -1936,7 +1815,6 @@
         toggle(enabled) {
             GM_setValue('playersOnMapEnabled', enabled);
             if (enabled) {
-                DataManager.start();
                 this.init();
                 this.startUpdating();
             } else {
@@ -2115,28 +1993,43 @@
             return list;
         },
 
-        processPlayersData(othersData) {
-            const newOthers = othersData || [];
-            if (newOthers.length === 0) {
-                this.renderStatus('Brak graczy na mapie');
-                this.others = [];
+        async loadPlayers() {
+            const token = GraphQLManager.getToken();
+            console.log('[PlayersOnMap] Próba załadowania, token:', token ? 'JEST (' + token.substring(0, 15) + '...)' : 'BRAK');
+
+            if (!token) {
+                this.renderStatus('Czekam na token');
                 return;
             }
 
-            if (this.playerList && this.playerList.children.length === newOthers.length) {
-                const currentNames = Array.from(this.playerList.children).map(row =>
-                                                                              row.querySelector('span')?.textContent?.trim()
-                                                                             );
-                const newNames = newOthers.map(p => p.name);
-
-                if (JSON.stringify(currentNames.sort()) === JSON.stringify(newNames.sort())) {
+            try {
+                const data = await GraphQLManager.query(this.OTHERS_QUERY);
+                console.log('[PlayersOnMap] Otrzymano graczy:', data.others?.length || 0);
+                const newOthers = data.others || [];
+                if (newOthers.length === 0) {
+                    this.renderStatus('Brak graczy na mapie');
+                    this.items = [];
                     return;
                 }
-            }
 
-            this.others = newOthers;
-            this.sortPlayers();
-            this.renderPlayers();
+                if (this.playerList && this.playerList.children.length === newOthers.length) {
+                    const currentNames = Array.from(this.playerList.children).map(row =>
+                                                                                  row.querySelector('span')?.textContent?.trim()
+                                                                                 );
+                    const newNames = newOthers.map(p => p.name);
+
+                    if (JSON.stringify(currentNames.sort()) === JSON.stringify(newNames.sort())) {
+                        return;
+                    }
+                }
+
+                this.others = newOthers;
+                this.sortPlayers();
+                this.renderPlayers();
+            } catch (e) {
+                console.error('[PlayersOnMap] Błąd:', e);
+                this.renderStatus('Błąd połączenia');
+            }
         },
 
         sortPlayers() {
@@ -2309,24 +2202,15 @@
         },
 
         startUpdating() {
-            this.dataHandler = (cache) => this.onDataUpdate(cache);
-            DataManager.subscribe(this.dataHandler);
-
-            if (DataManager.getLastUpdate() > 0) {
-                this.onDataUpdate(DataManager.cache);
-            }
+            setTimeout(() => this.loadPlayers(), 500);
+            this.updateInterval = setInterval(() => this.loadPlayers(), 3000);
         },
 
         stopUpdating() {
-            if (this.dataHandler) {
-                DataManager.unsubscribe(this.dataHandler);
-                this.dataHandler = null;
+            if (this.updateInterval) {
+                clearInterval(this.updateInterval);
+                this.updateInterval = null;
             }
-        },
-
-        onDataUpdate(cache) {
-            if (!cache.others) return;
-            this.processPlayersData(cache.others);
         },
 
         closePanel() {
@@ -3393,54 +3277,12 @@
                 row.style.transform = 'translateX(0)';
             });
 
-            // Kontener na przyciski akcji
-            const actionBtns = document.createElement('div');
-            Object.assign(actionBtns.style, {
-                position: 'absolute',
-                top: '6px',
-                right: '6px',
-                display: 'flex',
-                gap: '4px'
-            });
-
-            // Przycisk ustawień
-            const settingsBtn = document.createElement('button');
-            settingsBtn.textContent = '⚙️';
-            Object.assign(settingsBtn.style, {
-                background: 'rgba(100,100,255,0.2)',
-                border: '1px solid #6464ff',
-                color: '#9999ff',
-                cursor: 'pointer',
-                padding: '3px 5px',
-                borderRadius: '4px',
-                fontSize: '10px',
-                transition: 'all 0.2s ease',
-                lineHeight: '1',
-                width: '20px',
-                height: '20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-            });
-
-            settingsBtn.addEventListener('mouseenter', () => {
-                settingsBtn.style.background = 'rgba(100,100,255,0.4)';
-                settingsBtn.style.transform = 'scale(1.1) rotate(90deg)';
-            });
-
-            settingsBtn.addEventListener('mouseleave', () => {
-                settingsBtn.style.background = 'rgba(100,100,255,0.2)';
-                settingsBtn.style.transform = 'scale(1) rotate(0deg)';
-            });
-
-            settingsBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.openEditStatsPopup(data);
-            });
-
             const deleteBtn = document.createElement('button');
             deleteBtn.textContent = '🗑️';
             Object.assign(deleteBtn.style, {
+                position: 'absolute',
+                top: '6px',
+                right: '6px',
                 background: 'rgba(255,0,0,0.2)',
                 border: '1px solid #ff0000',
                 color: '#ff6666',
@@ -3472,9 +3314,6 @@
                 this.saveStats();
                 this.updatePanel();
             });
-
-            actionBtns.appendChild(settingsBtn);
-            actionBtns.appendChild(deleteBtn);
 
             const leftColumn = document.createElement('div');
             Object.assign(leftColumn.style, {
@@ -3598,256 +3437,9 @@
 
             row.appendChild(leftColumn);
             row.appendChild(rightColumn);
-            row.appendChild(actionBtns);
+            row.appendChild(deleteBtn);
 
             return row;
-        },
-
-        openEditStatsPopup(data) {
-            // Usuń istniejący popup jeśli jest
-            document.getElementById('kill-counter-edit-popup')?.remove();
-
-            const popup = document.createElement('div');
-            popup.id = 'kill-counter-edit-popup';
-            Object.assign(popup.style, {
-                position: 'fixed',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                padding: '20px',
-                backgroundColor: '#0b2505',
-                borderRadius: '12px',
-                color: 'white',
-                fontFamily: 'Times New Roman',
-                fontSize: '14px',
-                zIndex: '10000',
-                minWidth: '300px',
-                boxShadow: '0 4px 25px rgba(0,0,0,0.8)',
-                border: '2px solid #1a4d0d'
-            });
-
-            // Header
-            const header = document.createElement('div');
-            Object.assign(header.style, {
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '15px',
-                paddingBottom: '10px',
-                borderBottom: '1px solid #1a4d0d'
-            });
-
-            const title = document.createElement('span');
-            title.textContent = `Edycja: ${data.name}`;
-            Object.assign(title.style, {
-                fontSize: '16px',
-                fontWeight: 'bold'
-            });
-
-            const closeBtn = document.createElement('button');
-            closeBtn.textContent = '✖';
-            Object.assign(closeBtn.style, {
-                background: 'transparent',
-                border: 'none',
-                color: '#CC5252',
-                fontSize: '18px',
-                cursor: 'pointer',
-                padding: '4px 8px',
-                borderRadius: '4px',
-                transition: 'all 0.2s ease'
-            });
-            closeBtn.addEventListener('click', () => popup.remove());
-            closeBtn.addEventListener('mouseenter', () => {
-                closeBtn.style.color = '#ff6666';
-                closeBtn.style.background = 'rgba(255,255,255,0.1)';
-            });
-            closeBtn.addEventListener('mouseleave', () => {
-                closeBtn.style.color = '#CC5252';
-                closeBtn.style.background = 'transparent';
-            });
-
-            header.appendChild(title);
-            header.appendChild(closeBtn);
-
-            // Formularz
-            const form = document.createElement('div');
-            Object.assign(form.style, {
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px'
-            });
-
-            const itemColors = {
-                kills: '#ffffff',
-                unique: GM_getValue('highlightColorUnique', '#f5b536'),
-                heroic: GM_getValue('highlightColorHeroic', '#3193f5'),
-                legendary: GM_getValue('highlightColorLegendary', '#d1249e')
-            };
-
-            const fields = [
-                { key: 'kills', label: 'Ubicia', color: itemColors.kills },
-                { key: 'unique', label: 'Unikaty', color: itemColors.unique },
-                { key: 'heroic', label: 'Heroiczne', color: itemColors.heroic },
-                { key: 'legendary', label: 'Legendarne', color: itemColors.legendary }
-            ];
-
-            const inputs = {};
-
-            fields.forEach(field => {
-                const fieldRow = document.createElement('div');
-                Object.assign(fieldRow.style, {
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '10px'
-                });
-
-                const label = document.createElement('label');
-                label.textContent = field.label;
-                Object.assign(label.style, {
-                    color: field.color,
-                    fontWeight: 'bold',
-                    fontSize: '13px',
-                    flex: '1'
-                });
-
-                const inputWrapper = document.createElement('div');
-                Object.assign(inputWrapper.style, {
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                });
-
-                const minusBtn = document.createElement('button');
-                minusBtn.textContent = '-';
-                Object.assign(minusBtn.style, {
-                    width: '28px',
-                    height: '28px',
-                    background: '#1a4d0d',
-                    border: '1px solid #2d7a1a',
-                    color: 'white',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    transition: 'all 0.2s ease'
-                });
-                minusBtn.addEventListener('mouseenter', () => minusBtn.style.background = '#2d7a1a');
-                minusBtn.addEventListener('mouseleave', () => minusBtn.style.background = '#1a4d0d');
-
-                const input = document.createElement('input');
-                input.type = 'number';
-                input.min = '0';
-                input.value = data[field.key] || 0;
-                Object.assign(input.style, {
-                    width: '60px',
-                    padding: '6px 8px',
-                    background: '#061d02',
-                    border: `1px solid ${field.color}55`,
-                    color: 'white',
-                    borderRadius: '4px',
-                    textAlign: 'center',
-                    fontSize: '14px',
-                    fontFamily: 'monospace'
-                });
-                inputs[field.key] = input;
-
-                const plusBtn = document.createElement('button');
-                plusBtn.textContent = '+';
-                Object.assign(plusBtn.style, {
-                    width: '28px',
-                    height: '28px',
-                    background: '#1a4d0d',
-                    border: '1px solid #2d7a1a',
-                    color: 'white',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    transition: 'all 0.2s ease'
-                });
-                plusBtn.addEventListener('mouseenter', () => plusBtn.style.background = '#2d7a1a');
-                plusBtn.addEventListener('mouseleave', () => plusBtn.style.background = '#1a4d0d');
-
-                minusBtn.addEventListener('click', () => {
-                    const val = parseInt(input.value) || 0;
-                    input.value = Math.max(0, val - 1);
-                });
-
-                plusBtn.addEventListener('click', () => {
-                    const val = parseInt(input.value) || 0;
-                    input.value = val + 1;
-                });
-
-                inputWrapper.appendChild(minusBtn);
-                inputWrapper.appendChild(input);
-                inputWrapper.appendChild(plusBtn);
-
-                fieldRow.appendChild(label);
-                fieldRow.appendChild(inputWrapper);
-                form.appendChild(fieldRow);
-            });
-
-            // Przyciski akcji
-            const actions = document.createElement('div');
-            Object.assign(actions.style, {
-                display: 'flex',
-                gap: '10px',
-                marginTop: '15px',
-                justifyContent: 'flex-end'
-            });
-
-            const cancelBtn = document.createElement('button');
-            cancelBtn.textContent = 'Anuluj';
-            Object.assign(cancelBtn.style, {
-                padding: '8px 16px',
-                background: '#333',
-                border: '1px solid #555',
-                color: 'white',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '13px',
-                transition: 'all 0.2s ease'
-            });
-            cancelBtn.addEventListener('mouseenter', () => cancelBtn.style.background = '#444');
-            cancelBtn.addEventListener('mouseleave', () => cancelBtn.style.background = '#333');
-            cancelBtn.addEventListener('click', () => popup.remove());
-
-            const saveBtn = document.createElement('button');
-            saveBtn.textContent = 'Zapisz';
-            Object.assign(saveBtn.style, {
-                padding: '8px 16px',
-                background: '#1a4d0d',
-                border: '1px solid #2d7a1a',
-                color: 'white',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: 'bold',
-                transition: 'all 0.2s ease'
-            });
-            saveBtn.addEventListener('mouseenter', () => saveBtn.style.background = '#2d7a1a');
-            saveBtn.addEventListener('mouseleave', () => saveBtn.style.background = '#1a4d0d');
-            saveBtn.addEventListener('click', () => {
-                // Aktualizuj dane
-                data.kills = parseInt(inputs.kills.value) || 0;
-                data.unique = parseInt(inputs.unique.value) || 0;
-                data.heroic = parseInt(inputs.heroic.value) || 0;
-                data.legendary = parseInt(inputs.legendary.value) || 0;
-
-                this.stats.set(data.name, data);
-                this.saveStats();
-                this.updatePanel();
-                popup.remove();
-            });
-
-            actions.appendChild(cancelBtn);
-            actions.appendChild(saveBtn);
-
-            popup.appendChild(header);
-            popup.appendChild(form);
-            popup.appendChild(actions);
-            document.body.appendChild(popup);
         },
 
         makeDraggable(el) {
@@ -4093,7 +3685,6 @@
         compactMode: false,
         timersList: null,
         globalInterval: null,
-        STORAGE_KEY: 'minutnikTimers',
         STORAGE_POS: 'positionPanelTimer',
         currentCharacter: null,
 
@@ -4103,16 +3694,8 @@
             if (enabled) {
                 this.loadTimers();
                 this.init();
+                this.cacheCurrentCharacter();
                 BattleMonitor.subscribe(this.handleBattleEvent.bind(this));
-                // Pokaż minutnik zawsze gdy włączony
-                if (this.container) {
-                    this.container.style.display = 'block';
-                    if (this.timers.size === 0) {
-                        this.renderEmptyState();
-                    } else {
-                        this.updateAllTimers();
-                    }
-                }
             } else {
                 BattleMonitor.unsubscribe(this.handleBattleEvent.bind(this));
 
@@ -4120,6 +3703,56 @@
                     this.container.remove();
                     this.container = null;
                 }
+            }
+        },
+
+        async cacheCurrentCharacter() {
+            if (this.currentCharacter) return;
+
+            try {
+                const resCurrent = await fetch(CONFIG.API.CURRENTCHARACTER, {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!resCurrent.ok) {
+                    console.error('[Minutnik] Błąd pobierania game-credentials:', resCurrent.status);
+                    return;
+                }
+
+                const gameInfo = await resCurrent.json();
+
+                const res = await fetch(CONFIG.API.CHARACTERS, {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!res.ok) {
+                    console.error('[Minutnik] Błąd pobierania characters:', res.status);
+                    return;
+                }
+
+                const characters = await res.json();
+                const currentChar = characters.find(c => c.id === gameInfo.characterId);
+
+                if (currentChar) {
+                    this.currentCharacter = {
+                        id: currentChar.id,
+                        name: currentChar.name,
+                        src: currentChar.src,
+                        profession: currentChar.profession,
+                        lvl: currentChar.lvl
+                    };
+                    console.log('[Minutnik] Postać zcachowana:', this.currentCharacter.name);
+                }
+            } catch (e) {
+                console.error('[Minutnik] Błąd cachowania postaci:', e);
             }
         },
 
@@ -4132,17 +3765,6 @@
             document.body.appendChild(this.container);
             this.restorePosition();
             this.makeDraggable(this.container);
-
-            // Pokaż minutnik i renderuj odpowiednią zawartość
-            this.container.style.display = 'block';
-            if (this.timers.size === 0) {
-                this.renderEmptyState();
-            } else {
-                if (!this.globalInterval) {
-                    this.globalInterval = setInterval(() => this.updateAllTimers(), 2000);
-                }
-                this.updateAllTimers();
-            }
         },
 
         handleBattleEvent(event, data) {
@@ -4167,115 +3789,7 @@
             }
         },
 
-
-        monitorBattle() {
-            const battleWindow = document.querySelector('.battle-window');
-
-            if (battleWindow && !this.inBattle) {
-                this.inBattle = true;
-                setTimeout(() => this.captureMobData(), 100);
-            } else if (!battleWindow && this.inBattle) {
-                this.inBattle = false;
-                setTimeout(() => this.checkBattleResult(), 500);
-            }
-        },
-
-        checkBattleResult() {
-            if (this.currentBattleMobs.length === 0) return;
-
-            const isDead = document.querySelector('#game-map-window .dazed');
-
-            if (!isDead) {
-                console.log('[Minutnik] Wygrana walka - dodaję timery');
-                this.addTimersForMobs();
-            } else {
-                console.log('[Minutnik] Przegrana walka - czyszczę dane');
-            }
-
-            setTimeout(() => {
-                this.currentBattleMobs = [];
-            }, 100);
-        },
-
-        async captureMobData() {
-            const battleWindow = document.querySelector('.battle-window');
-            if (!battleWindow) return;
-            this.currentBattleMobs = [];
-            const opponentDivs = battleWindow.querySelectorAll('.opponent');
-            for (const opponentDiv of opponentDivs) {
-                let mobName = null;
-                let mobLevel = '??';
-                let mobImage = null;
-                const imgElement = opponentDiv.querySelector('img');
-                if (imgElement) {
-                    mobImage = imgElement.src || imgElement.getAttribute('data-src');
-
-                    const altText = imgElement.getAttribute('alt');
-                    if (altText) {
-                        mobName = altText
-                            .replace(/&lt;br&gt;/g, ' ')
-                            .replace(/<br>/g, ' ')
-                            .replace(/\s+/g, ' ')
-                            .trim();
-
-                        const percentMatch = mobName.match(/(\d+)%/);
-                        if (percentMatch) {
-                            mobName = mobName.replace(/\d+%/, '').trim();
-                        }
-                    }
-
-                    const dataHtml = imgElement.getAttribute('data-html');
-                    if (dataHtml && !mobName) {
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = dataHtml;
-                        mobName = tempDiv.textContent.trim();
-                    }
-                }
-
-                const dataNpc = opponentDiv.getAttribute('data-npc');
-                if (dataNpc) {
-                    try {
-                        const data = JSON.parse(dataNpc);
-                        mobLevel = data?.schema?.inner?.lvl || '??';
-
-                        if (!mobName) {
-                            mobName = data?.schema?.inner?.name
-                            || data?.schema?.name
-                            || data?.npc?.name
-                            || data?.name;
-                        }
-                    } catch (e) {
-                        console.log('[Minutnik] Błąd parsowania data-npc:', e);
-                    }
-                }
-
-                if (!mobName) {
-                    console.log('[Minutnik] Pominięto moba bez nazwy');
-                    continue;
-                }
-
-                mobName = mobName
-                    .replace(/\d+%/g, '')
-                    .replace(/\[.*?\]/g, '')
-                    .trim();
-
-                const mobInfo = this.getMobInfo(mobName);
-                if (mobInfo.rank === 'UNKNOWN') {
-                    console.log('[Minutnik] Pominięto moba spoza listy:', mobName);
-                    continue;
-                }
-
-                this.currentBattleMobs.push({
-                    name: mobName,
-                    level: mobInfo.lvl || mobLevel,
-                    rank: mobInfo.rank
-                });
-            }
-
-            console.log('[Minutnik] Zapisano moby:', this.currentBattleMobs);
-        },
-
-        async addTimersForMobs(mobs) {
+        addTimersForMobs(mobs) {
             if (!mobs || mobs.length === 0) {
                 console.log('[Minutnik] Brak mobów do dodania');
                 return;
@@ -4283,67 +3797,17 @@
 
             console.log('[Minutnik] Dodawanie timerów dla mobów:', mobs);
 
-            const character = await this.getCurrentCharacter();
-
             for (const mob of mobs) {
                 if (this.timers.has(mob.name)) {
-                    console.log('[Minutnik] Timer dla', mob.name, 'już istnieje - resetuję timer');
-                    this.timers.delete(mob.name);
+                    console.log('[Minutnik] Timer dla', mob.name, 'już istnieje - pomijam');
+                    continue;
                 }
 
                 const { minTime, maxTime } = this.calculateRespawnTime(mob.level, mob.rank);
 
-                this.addTimer(minTime, maxTime, mob.name, mob.rank, mob.level, character, mob.image);
-                console.log('[Minutnik] Dodano/zresetowano timer dla:', mob.name, 'min:', minTime, 'max:', maxTime);
+                this.addTimer(minTime, maxTime, mob.name, mob.rank, mob.level, this.currentCharacter, mob.image);
+                console.log('[Minutnik] Dodano timer dla:', mob.name, 'min:', minTime, 'max:', maxTime);
             }
-        },
-
-        async getCurrentCharacter() {
-            try {
-                const resCurrent = await fetch(CONFIG.API.CURRENTCHARACTER, {
-                    credentials: 'include',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                if (!resCurrent.ok) {
-                    console.error('[Minutnik] Błąd pobierania game-credentials:', resCurrent.status);
-                    return null;
-                }
-
-                const gameInfo = await resCurrent.json();
-
-                const res = await fetch(CONFIG.API.CHARACTERS, {
-                    credentials: 'include',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                if (!res.ok) {
-                    console.error('[Minutnik] Błąd pobierania characters:', res.status);
-                    return null;
-                }
-
-                const characters = await res.json();
-                const currentCharacter = characters.find(c => c.id === gameInfo.characterId);
-
-                if (currentCharacter) {
-                    return {
-                        id: currentCharacter.id,
-                        name: currentCharacter.name,
-                        src: currentCharacter.src,
-                        profession: currentCharacter.profession,
-                        lvl: currentCharacter.lvl
-                    };
-                }
-            } catch (e) {
-                console.error('[Minutnik] Błąd pobierania postaci:', e);
-            }
-            return null;
         },
 
         calculateRespawnTime(level, rank) {
@@ -4408,7 +3872,7 @@
             this.saveTimers();
 
             if (!this.globalInterval) {
-                this.globalInterval = setInterval(() => this.updateAllTimers(), 2000);
+                this.globalInterval = setInterval(() => this.updateAllTimers(), 1000);
             }
 
             this.updateAllTimers();
@@ -4442,7 +3906,7 @@
             }
 
             if (this.timers.size > 0 && !this.globalInterval) {
-                this.globalInterval = setInterval(() => this.updateAllTimers(), 2000);
+                this.globalInterval = setInterval(() => this.updateAllTimers(), 1000);
                 this.updateAllTimers();
             }
         },
@@ -4450,21 +3914,6 @@
         updateAllTimers() {
             const now = Date.now();
             this.timersList.innerHTML = '';
-
-            // Najpierw usuń wygasłe timery z mapy i odtwórz dźwięk
-            const expiredTimers = [];
-            for (const [mobName, data] of this.timers.entries()) {
-                const maxDiff = Math.floor((data.maxEndTime - now) / 1000);
-                if (maxDiff <= 0) {
-                    expiredTimers.push(mobName);
-                }
-            }
-
-            if (expiredTimers.length > 0) {
-                const audioUrl = GM_getValue('audioUrlMinutnik', 'https://files.catbox.moe/od2lcz.mp3');
-                Utils.playAudio(audioUrl);
-                expiredTimers.forEach(mobName => this.timers.delete(mobName));
-            }
 
             const sortedTimers = [...this.timers.entries()]
             .map(([mobName, data]) => ({
@@ -4479,7 +3928,12 @@
                 const { minEndTime, maxEndTime, rank, mobLvl, totalTime } = data;
                 const minDiff = Math.floor((minEndTime - now) / 1000);
 
-                if (minDiff === 0) {
+                if (maxDiff <= 0) {
+                    const audioUrl = GM_getValue('audioUrlMinutnik', 'https://files.catbox.moe/od2lcz.mp3');
+                    Utils.playAudio(audioUrl);
+                    this.timers.delete(mobName);
+                    continue;
+                } else if (minDiff === 0) {
                     const audioUrl = GM_getValue('audioUrlMinutnik', 'https://files.catbox.moe/od2lcz.mp3');
                     Utils.playAudio(audioUrl);
                 }
@@ -4488,41 +3942,23 @@
                 this.timersList.appendChild(timerElement);
             }
 
-            // Zapisz timery do localStorage tylko gdy coś się zmieniło (wygasły timery)
-            if (expiredTimers.length > 0) {
-                this.saveTimers();
+            if (this.timers.size === 0) {
+                clearInterval(this.globalInterval);
+                this.globalInterval = null;
+                this.container.style.display = 'none';
+                this.timersList.innerHTML = '';
+            } else {
+                this.container.style.display = 'block';
             }
 
-            // Minutnik zawsze widoczny, ale pokaż "brak timerów" gdy pusta lista
+            this.saveTimers();
+
             if (!GM_getValue('minutnikEnabled', false)) {
                 clearInterval(this.globalInterval);
                 this.globalInterval = null;
                 this.container.style.display = 'none';
                 this.timersList.innerHTML = '';
-                return;
             }
-
-            this.container.style.display = 'block';
-
-            if (this.timers.size === 0) {
-                clearInterval(this.globalInterval);
-                this.globalInterval = null;
-                this.renderEmptyState();
-            }
-        },
-
-        renderEmptyState() {
-            this.timersList.innerHTML = '';
-            const emptyMsg = document.createElement('div');
-            Object.assign(emptyMsg.style, {
-                textAlign: 'center',
-                padding: '15px 10px',
-                color: '#888',
-                fontStyle: 'italic',
-                fontSize: '13px'
-            });
-            emptyMsg.textContent = 'Brak timerów';
-            this.timersList.appendChild(emptyMsg);
         },
 
         createContainer() {
@@ -5156,12 +4592,29 @@
         alertDisplayed: false,
         detectedHeroes: new Set(),
         detectedTitans: new Set(),
-        dataHandler: null,
+        checkInterval: null,
+
+        HEROES_QUERY: `
+        query HeroesOnMap {
+            location {
+                id
+                name
+            }
+            npcs {
+                id
+                name
+                lvl
+                x
+                y
+                rank
+                src
+            }
+        }
+    `,
 
         toggle(enabled) {
             GM_setValue('heroDetectorEnabled', enabled);
             if (enabled) {
-                DataManager.start();
                 this.startChecking();
             } else {
                 this.stopChecking();
@@ -5169,63 +4622,69 @@
         },
 
         startChecking() {
-            this.dataHandler = (cache) => this.onDataUpdate(cache);
-            DataManager.subscribe(this.dataHandler);
-
-            if (DataManager.getLastUpdate() > 0) {
-                this.onDataUpdate(DataManager.cache);
-            }
+            setTimeout(() => this.checkForHeroes(), 200);
+            this.checkInterval = setInterval(() => this.checkForHeroes(), 1000);
         },
 
         stopChecking() {
-            if (this.dataHandler) {
-                DataManager.unsubscribe(this.dataHandler);
-                this.dataHandler = null;
+            if (this.checkInterval) {
+                clearInterval(this.checkInterval);
+                this.checkInterval = null;
             }
         },
 
-        onDataUpdate(cache) {
-            if (!cache.npcs || !cache.location) return;
-            this.checkForHeroes(cache.npcs, cache.location);
-        },
+        async checkForHeroes() {
+            const token = GraphQLManager.getToken();
+            if (!token) {
+                console.log('[HeroDetector] Czekam na token');
+                return;
+            }
 
-        checkForHeroes(npcs, location) {
-            let foundEntities = [];
+            try {
+                const data = await GraphQLManager.query(this.HEROES_QUERY);
+                const location = data.location;
+                const npcs = data.npcs || [];
 
-            npcs.forEach(npc => {
-                const rank = npc.rank?.toUpperCase();
+                let foundEntities = [];
 
-                if (rank === 'HERO' && !this.detectedHeroes.has(npc.name)) {
-                    this.detectedHeroes.add(npc.name);
-                    foundEntities.push({
-                        name: npc.name,
-                        level: npc.lvl || '??',
-                        type: 'hero',
-                        x: npc.x,
-                        y: npc.y,
-                        src: npc.src,
-                        locationId: location?.id,
-                        locationName: location?.name
-                    });
+                npcs.forEach(npc => {
+                    const rank = npc.rank?.toUpperCase();
+
+                    if (rank === 'HERO' && !this.detectedHeroes.has(npc.name)) {
+                        this.detectedHeroes.add(npc.name);
+                        foundEntities.push({
+                            name: npc.name,
+                            level: npc.lvl || '??',
+                            type: 'hero',
+                            x: npc.x,
+                            y: npc.y,
+                            src: npc.src,
+                            locationId: location.id,
+                            locationName: location.name
+                        });
+                    }
+
+                    if (rank === 'TITAN' && !this.detectedTitans.has(npc.name)) {
+                        this.detectedTitans.add(npc.name);
+                        foundEntities.push({
+                            name: npc.name,
+                            level: npc.lvl || '??',
+                            type: 'titan',
+                            x: npc.x,
+                            y: npc.y,
+                            src: npc.src,
+                            locationId: location.id,
+                            locationName: location.name
+                        });
+                    }
+                });
+
+                if (foundEntities.length > 0 && !this.alertDisplayed) {
+                    this.showAlert(foundEntities);
                 }
 
-                if (rank === 'TITAN' && !this.detectedTitans.has(npc.name)) {
-                    this.detectedTitans.add(npc.name);
-                    foundEntities.push({
-                        name: npc.name,
-                        level: npc.lvl || '??',
-                        type: 'titan',
-                        x: npc.x,
-                        y: npc.y,
-                        src: npc.src,
-                        locationId: location?.id,
-                        locationName: location?.name
-                    });
-                }
-            });
-
-            if (foundEntities.length > 0 && !this.alertDisplayed) {
-                this.showAlert(foundEntities);
+            } catch (e) {
+                console.error('[HeroDetector] Błąd:', e);
             }
         },
 
@@ -5958,115 +5417,6 @@
         }
     };
 
-    // ======================== AUTO REFRESH ========================
-    const AutoRefresh = {
-        observer: null,
-        isEnabled: false,
-        refreshTimeout: null,
-        consoleHooked: false,
-
-        getRefreshDelay() {
-            return parseInt(GM_getValue('autoRefreshDelay', '3000')) || 3000;
-        },
-
-        toggle(enabled) {
-            GM_setValue('autoRefreshEnabled', enabled);
-            this.isEnabled = enabled;
-
-            if (enabled) {
-                this.startMonitoring();
-                console.log('[AutoRefresh] Włączono monitoring połączenia');
-            } else {
-                this.stopMonitoring();
-                console.log('[AutoRefresh] Wyłączono monitoring połączenia');
-            }
-        },
-
-        startMonitoring() {
-            let debounceTimeout = null;
-
-            // Monitoruj pojawianie się okna "Połączenie zostało zerwane"
-            this.observer = new MutationObserver((mutations) => {
-                // Debounce - sprawdzaj maksymalnie co 500ms
-                if (debounceTimeout) return;
-                debounceTimeout = setTimeout(() => {
-                    debounceTimeout = null;
-                    for (const mutation of mutations) {
-                        for (const node of mutation.addedNodes) {
-                            if (node.nodeType === Node.ELEMENT_NODE) {
-                                // Sprawdź czy to okno connection lost
-                                const isConnectionLost =
-                                    node.textContent?.includes('Połączenie zostało zerwane') ||
-                                    node.querySelector?.('.connection-lost') ||
-                                    node.classList?.contains('connection-lost');
-
-                                if (isConnectionLost) {
-                                    const delay = this.getRefreshDelay();
-                                    console.log('[AutoRefresh] Wykryto utratę połączenia - odświeżam za', delay, 'ms');
-                                    this.scheduleRefresh();
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                }, 500);
-            });
-
-            this.observer.observe(document.body, {
-                childList: true,
-                subtree: false // Zmniejsz zakres - obserwuj tylko bezpośrednie dzieci body
-            });
-
-            // Dodatkowe monitorowanie przez console error hook (tylko raz)
-            if (!this.consoleHooked) {
-                this.hookConsoleError();
-                this.consoleHooked = true;
-            }
-        },
-
-        hookConsoleError() {
-            const originalError = console.error;
-            const self = this;
-
-            console.error = function(...args) {
-                originalError.apply(console, args);
-
-                // Sprawdź czy to błąd connection lost
-                const message = args.join(' ');
-                if (message.includes('Connection to server has been lost') && self.isEnabled) {
-                    const delay = self.getRefreshDelay();
-                    console.log('[AutoRefresh] Wykryto błąd połączenia w konsoli - odświeżam za', delay, 'ms');
-                    self.scheduleRefresh();
-                }
-            };
-        },
-
-        scheduleRefresh() {
-            // Anuluj poprzedni timeout jeśli istnieje
-            if (this.refreshTimeout) {
-                clearTimeout(this.refreshTimeout);
-            }
-
-            const delay = this.getRefreshDelay();
-            this.refreshTimeout = setTimeout(() => {
-                console.log('[AutoRefresh] Odświeżanie strony...');
-                window.location.reload();
-            }, delay);
-        },
-
-        stopMonitoring() {
-            if (this.observer) {
-                this.observer.disconnect();
-                this.observer = null;
-            }
-
-            if (this.refreshTimeout) {
-                clearTimeout(this.refreshTimeout);
-                this.refreshTimeout = null;
-            }
-        }
-    };
-
     // ======================== ADDONS CONFIGURATION ========================
     const ADDONS = [
         { id: 'hpExpEnabled', default: false, icon: 'https://i.imgur.com/eNSbVfl.png',
@@ -6221,22 +5571,6 @@
             title: 'Panel Łupów',
             desc: 'Pokazuje ostatnio osiem zdobytych legend przez graczy!',
             onToggle: (e) => LegendLootPanel .toggle(e),
-        },
-        {
-            id: 'autoRefreshEnabled',
-            default: false,
-            icon: 'https://imgur.com/7NQXS2h.png',
-            title: 'AutoRefresh',
-            desc: 'Automatycznie odświeża stronę po utracie połączenia z serwerem.',
-            onToggle: (e) => AutoRefresh.toggle(e),
-            settings: [
-                {
-                    key: 'autoRefreshDelay',
-                    label: 'Opóźnienie przed odświeżeniem (ms)',
-                    type: 'number',
-                    default: '3000'
-                }
-            ]
         },
         { id: 'autoLootEnabled', default: false, icon: 'https://i.imgur.com/pVGWAkT.gif',
          title: 'LootFilter', desc: 'Automatycznie akceptuje lub odrzuca przedmioty w oknie łupów.',
@@ -6513,17 +5847,21 @@
             label.appendChild(slider);
             wrapper.appendChild(label);
 
-            input.addEventListener('change', () => {
-                slider.style.backgroundColor = input.checked ? '#4CAF50' : '#1a4d0d';
-                slider.style.borderColor = input.checked ? '#66bb6a' : '#2d7a1a';
-                circle.style.transform = input.checked ? 'translateX(24px)' : 'translateX(0)';
-                circle.style.boxShadow = input.checked ?
+            const updateSliderVisual = (checked) => {
+                slider.style.backgroundColor = checked ? '#4CAF50' : '#1a4d0d';
+                slider.style.borderColor = checked ? '#66bb6a' : '#2d7a1a';
+                circle.style.transform = checked ? 'translateX(24px)' : 'translateX(0)';
+                circle.style.boxShadow = checked ?
                     '0 2px 6px rgba(76,175,80,0.5)' : '0 2px 4px rgba(0,0,0,0.3)';
+            };
+
+            input.addEventListener('change', () => {
+                updateSliderVisual(input.checked);
                 addon.onToggle(input.checked);
                 HotKeys.toggle(GM_getValue('hotKeysEnabled'));
             });
 
-            setTimeout(() => input.dispatchEvent(new Event('change')), 0);
+            updateSliderVisual(input.checked);
             return wrapper;
         },
 
@@ -7372,17 +6710,6 @@
             console.log('[Init] BattleMonitor uruchomiony');
         }
 
-        // Uruchom centralny DataManager - jedno zapytanie dla wszystkich modułów
-        const needsDataManager = GM_getValue('npcsOnMapEnabled', false) ||
-              GM_getValue('itemsOnMapEnabled', false) ||
-              GM_getValue('playersOnMapEnabled', false) ||
-              GM_getValue('heroDetectorEnabled', false);
-
-        if (needsDataManager) {
-            DataManager.start();
-            console.log('[Init] DataManager uruchomiony');
-        }
-
         const observer = new MutationObserver((mutations, obs) => {
             const container = document.querySelector('#panel .small-buttons');
             if (container) {
@@ -7394,5 +6721,6 @@
         setTimeout(() => WelcomePanel.show(), 1000);
         observer.observe(document.body, { childList: true, subtree: true });
         ADDONS.forEach(addon => addon.onToggle(GM_getValue(addon.id, addon.default)));
+        HeroDetector.checkForHeroes();
     });
 })();
