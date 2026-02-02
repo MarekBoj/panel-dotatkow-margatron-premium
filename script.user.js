@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      4.2.4
+// @version      4.5.0
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -68,6 +68,10 @@
     // ======================== GRAPHQL MANAGER ========================
     const GraphQLManager = {
         API_URL: 'https://engine-retro.margatron.ovh/graphql',
+        requestQueue: [],
+        isProcessing: false,
+        lastRequestTime: 0,
+        MIN_REQUEST_INTERVAL: 500, // Minimalna przerwa między zapytaniami (ms)
 
         getToken() {
             return authToken;
@@ -79,6 +83,15 @@
                 console.warn('[GraphQLManager] Brak tokena autoryzacji');
                 throw new Error('Brak tokena autoryzacji');
             }
+
+            // Throttling - czekaj jeśli ostatnie zapytanie było zbyt niedawno
+            const now = Date.now();
+            const timeSinceLastRequest = now - this.lastRequestTime;
+            if (timeSinceLastRequest < this.MIN_REQUEST_INTERVAL) {
+                await new Promise(resolve => setTimeout(resolve, this.MIN_REQUEST_INTERVAL - timeSinceLastRequest));
+            }
+
+            this.lastRequestTime = Date.now();
 
             try {
                 const res = await fetch(this.API_URL, {
@@ -1342,7 +1355,7 @@
 
         startUpdating() {
             setTimeout(() => this.loadNpcs(), 500);
-            this.updateInterval = setInterval(() => this.loadNpcs(), 3000);
+            this.updateInterval = setInterval(() => this.loadNpcs(), 8000);
         },
 
         stopUpdating() {
@@ -1774,7 +1787,7 @@
 
         startUpdating() {
             setTimeout(() => this.loadItems(), 500);
-            this.updateInterval = setInterval(() => this.loadItems(), 3000);
+            this.updateInterval = setInterval(() => this.loadItems(), 8000);
         },
 
         stopUpdating() {
@@ -2234,7 +2247,7 @@
 
         startUpdating() {
             setTimeout(() => this.loadPlayers(), 500);
-            this.updateInterval = setInterval(() => this.loadPlayers(), 3000);
+            this.updateInterval = setInterval(() => this.loadPlayers(), 8000);
         },
 
         stopUpdating() {
@@ -5100,7 +5113,7 @@
 
         startChecking() {
             setTimeout(() => this.checkForHeroes(), 200);
-            this.checkInterval = setInterval(() => this.checkForHeroes(), 1000);
+            this.checkInterval = setInterval(() => this.checkForHeroes(), 5000);
         },
 
         stopChecking() {
@@ -5894,6 +5907,107 @@
         }
     };
 
+    // ======================== AUTO REFRESH ========================
+    const AutoRefresh = {
+        observer: null,
+        isEnabled: false,
+        refreshTimeout: null,
+        consoleHooked: false,
+
+        getRefreshDelay() {
+            return parseInt(GM_getValue('autoRefreshDelay', '3000')) || 3000;
+        },
+
+        toggle(enabled) {
+            GM_setValue('autoRefreshEnabled', enabled);
+            this.isEnabled = enabled;
+
+            if (enabled) {
+                this.startMonitoring();
+                console.log('[AutoRefresh] Włączono monitoring połączenia');
+            } else {
+                this.stopMonitoring();
+                console.log('[AutoRefresh] Wyłączono monitoring połączenia');
+            }
+        },
+
+        startMonitoring() {
+            // Monitoruj pojawianie się okna "Połączenie zostało zerwane"
+            this.observer = new MutationObserver((mutations) => {
+                for (const mutation of mutations) {
+                    for (const node of mutation.addedNodes) {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            // Sprawdź czy to okno connection lost
+                            const isConnectionLost =
+                                node.textContent?.includes('Połączenie zostało zerwane') ||
+                                node.querySelector?.('.connection-lost') ||
+                                node.classList?.contains('connection-lost');
+
+                            if (isConnectionLost) {
+                                const delay = this.getRefreshDelay();
+                                console.log('[AutoRefresh] Wykryto utratę połączenia - odświeżam za', delay, 'ms');
+                                this.scheduleRefresh();
+                            }
+                        }
+                    }
+                }
+            });
+
+            this.observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+
+            // Dodatkowe monitorowanie przez console error hook (tylko raz)
+            if (!this.consoleHooked) {
+                this.hookConsoleError();
+                this.consoleHooked = true;
+            }
+        },
+
+        hookConsoleError() {
+            const originalError = console.error;
+            const self = this;
+
+            console.error = function(...args) {
+                originalError.apply(console, args);
+
+                // Sprawdź czy to błąd connection lost
+                const message = args.join(' ');
+                if (message.includes('Connection to server has been lost') && self.isEnabled) {
+                    const delay = self.getRefreshDelay();
+                    console.log('[AutoRefresh] Wykryto błąd połączenia w konsoli - odświeżam za', delay, 'ms');
+                    self.scheduleRefresh();
+                }
+            };
+        },
+
+        scheduleRefresh() {
+            // Anuluj poprzedni timeout jeśli istnieje
+            if (this.refreshTimeout) {
+                clearTimeout(this.refreshTimeout);
+            }
+
+            const delay = this.getRefreshDelay();
+            this.refreshTimeout = setTimeout(() => {
+                console.log('[AutoRefresh] Odświeżanie strony...');
+                window.location.reload();
+            }, delay);
+        },
+
+        stopMonitoring() {
+            if (this.observer) {
+                this.observer.disconnect();
+                this.observer = null;
+            }
+
+            if (this.refreshTimeout) {
+                clearTimeout(this.refreshTimeout);
+                this.refreshTimeout = null;
+            }
+        }
+    };
+
     // ======================== ADDONS CONFIGURATION ========================
     const ADDONS = [
         { id: 'hpExpEnabled', default: false, icon: 'https://i.imgur.com/eNSbVfl.png',
@@ -6048,6 +6162,22 @@
             title: 'Panel Łupów',
             desc: 'Pokazuje ostatnio osiem zdobytych legend przez graczy!',
             onToggle: (e) => LegendLootPanel .toggle(e),
+        },
+        {
+            id: 'autoRefreshEnabled',
+            default: false,
+            icon: 'https://imgur.com/7NQXS2h.png',
+            title: 'AutoRefresh',
+            desc: 'Automatycznie odświeża stronę po utracie połączenia z serwerem.',
+            onToggle: (e) => AutoRefresh.toggle(e),
+            settings: [
+                {
+                    key: 'autoRefreshDelay',
+                    label: 'Opóźnienie przed odświeżeniem (ms)',
+                    type: 'number',
+                    default: '3000'
+                }
+            ]
         },
         { id: 'autoLootEnabled', default: false, icon: 'https://i.imgur.com/pVGWAkT.gif',
          title: 'LootFilter', desc: 'Automatycznie akceptuje lub odrzuca przedmioty w oknie łupów.',
