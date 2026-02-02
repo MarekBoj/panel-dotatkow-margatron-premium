@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      4.2.0
+// @version      4.2.1
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -68,54 +68,12 @@
     // ======================== GRAPHQL MANAGER ========================
     const GraphQLManager = {
         API_URL: 'https://engine-retro.margatron.ovh/graphql',
-        requestQueue: [],
-        isProcessing: false,
-        MIN_REQUEST_INTERVAL: 200, // Minimum 200ms between requests
-        lastRequestTime: 0,
 
         getToken() {
             return authToken;
         },
 
         async query(queryString) {
-            return new Promise((resolve, reject) => {
-                this.requestQueue.push({ queryString, resolve, reject });
-                this.processQueue();
-            });
-        },
-
-        async processQueue() {
-            if (this.isProcessing || this.requestQueue.length === 0) {
-                return;
-            }
-
-            this.isProcessing = true;
-
-            while (this.requestQueue.length > 0) {
-                const now = Date.now();
-                const timeSinceLastRequest = now - this.lastRequestTime;
-
-                // Wait if we're sending requests too fast
-                if (timeSinceLastRequest < this.MIN_REQUEST_INTERVAL) {
-                    await new Promise(r => setTimeout(r, this.MIN_REQUEST_INTERVAL - timeSinceLastRequest));
-                }
-
-                const { queryString, resolve, reject } = this.requestQueue.shift();
-
-                try {
-                    const result = await this.executeQuery(queryString);
-                    resolve(result);
-                } catch (e) {
-                    reject(e);
-                }
-
-                this.lastRequestTime = Date.now();
-            }
-
-            this.isProcessing = false;
-        },
-
-        async executeQuery(queryString) {
             const token = this.getToken();
             if (!token) {
                 console.warn('[GraphQLManager] Brak tokena autoryzacji');
@@ -318,87 +276,6 @@
         },
     };
 
-    // ======================== CHARACTER MANAGER ========================
-    // Global character data manager - fetches on page load and refreshes periodically
-    const CharacterManager = {
-        currentCharacter: null,
-        isInitialized: false,
-        refreshInterval: null,
-        REFRESH_INTERVAL: 60000, // Refresh every 60 seconds
-
-        async init() {
-            if (this.isInitialized) return;
-            this.isInitialized = true;
-
-            // Initial fetch
-            await this.fetchCharacter();
-
-            // Set up periodic refresh
-            this.refreshInterval = setInterval(() => {
-                this.fetchCharacter();
-            }, this.REFRESH_INTERVAL);
-
-            console.log('[CharacterManager] Zainicjalizowano - odświeżanie co 60s');
-        },
-
-        async fetchCharacter() {
-            try {
-                const resCurrent = await fetch(CONFIG.API.CURRENTCHARACTER, {
-                    credentials: 'include',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                if (!resCurrent.ok) {
-                    console.error('[CharacterManager] Błąd pobierania game-credentials:', resCurrent.status);
-                    return;
-                }
-
-                const gameInfo = await resCurrent.json();
-
-                const res = await fetch(CONFIG.API.CHARACTERS, {
-                    credentials: 'include',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                if (!res.ok) {
-                    console.error('[CharacterManager] Błąd pobierania characters:', res.status);
-                    return;
-                }
-
-                const characters = await res.json();
-                const currentCharacter = characters.find(c => c.id === gameInfo.characterId);
-
-                if (currentCharacter) {
-                    this.currentCharacter = {
-                        id: currentCharacter.id,
-                        name: currentCharacter.name,
-                        src: currentCharacter.src,
-                        profession: currentCharacter.profession,
-                        lvl: currentCharacter.lvl
-                    };
-                    console.log('[CharacterManager] Pobrano postać:', this.currentCharacter.name);
-                }
-            } catch (e) {
-                console.error('[CharacterManager] Błąd pobierania postaci:', e);
-            }
-        },
-
-        getCharacter() {
-            return this.currentCharacter;
-        },
-
-        // Force refresh (e.g., after character switch)
-        async refresh() {
-            await this.fetchCharacter();
-        }
-    };
-
     const Utils = {
         simulateKeyPress(key, code, keyCode) {
             const opts = { key, code, keyCode, which: keyCode, bubbles: true, cancelable: true };
@@ -461,44 +338,6 @@
             audio.play()
                 .then(() => setTimeout(() => { audio.pause(); audio.currentTime = 0; }, 5000))
                 .catch(err => console.warn("Nie można odtworzyć dźwięku:", err));
-        },
-
-        // Debounce - delays execution until after wait ms have elapsed since last call
-        debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        },
-
-        // Throttle - ensures function is called at most once per wait ms
-        throttle(func, wait) {
-            let lastCall = 0;
-            let timeout = null;
-            return function executedFunction(...args) {
-                const now = Date.now();
-                const remaining = wait - (now - lastCall);
-
-                if (remaining <= 0) {
-                    if (timeout) {
-                        clearTimeout(timeout);
-                        timeout = null;
-                    }
-                    lastCall = now;
-                    func(...args);
-                } else if (!timeout) {
-                    timeout = setTimeout(() => {
-                        lastCall = Date.now();
-                        timeout = null;
-                        func(...args);
-                    }, remaining);
-                }
-            };
         }
     };
 
@@ -644,8 +483,7 @@
                 .replace(/[\u0300-\u036f]/g, "")
                 .trim();
 
-                // Exact match only - prevents "Lisz" from matching "BazyLISZek"
-                return normalized === monsterNormalized;
+                return normalized.includes(monsterNormalized) || monsterNormalized.includes(normalized);
             });
 
             return found || { lvl: '??', rank: 'UNKNOWN' };
@@ -668,7 +506,7 @@
         },
 
         startMonitoring() {
-            intervalManager.set('battleMonitor', () => this.checkBattle(), 250);
+            intervalManager.set('battleMonitor', () => this.checkBattle(), 100);
             console.log('[BattleMonitor] Monitoring rozpoczęty');
         },
 
@@ -1284,9 +1122,40 @@
                 this.npcs = newNpcs;
                 this.sortNpcs();
                 this.renderNpcs();
+
+                // Sprawdź czy któryś z NPC na mapie ma aktywny timer w Minutniku
+                this.checkMinutnikTimers(newNpcs);
             } catch (e) {
                 console.error('[NpcsOnMap] Błąd:', e);
                 this.renderStatus('Błąd połączenia');
+            }
+        },
+
+        checkMinutnikTimers(npcs) {
+            if (!GM_getValue('minutnikEnabled', false)) return;
+            if (!Minutnik || !Minutnik.timers) return;
+
+            let removedAny = false;
+
+            for (const npc of npcs) {
+                // Sprawdź czy istnieje timer dla tego NPC
+                if (Minutnik.timers.has(npc.name)) {
+                    console.log('[NpcsOnMap] NPC', npc.name, 'pojawił się na mapie - usuwam timer z minutnika');
+                    Minutnik.timers.delete(npc.name);
+                    removedAny = true;
+                }
+            }
+
+            if (removedAny) {
+                // Odtwórz dźwięk z minutnika
+                const audioUrl = GM_getValue('audioUrlMinutnik', 'https://files.catbox.moe/od2lcz.mp3');
+                Utils.playAudio(audioUrl);
+
+                // Zapisz i zaktualizuj UI minutnika
+                Minutnik.saveTimers();
+                if (Minutnik.container && Minutnik.timersList) {
+                    Minutnik.updateAllTimers();
+                }
             }
         },
 
@@ -3096,9 +2965,6 @@
         stats: new Map(),
         currentCategory: 'all',
         STORAGE_KEY: 'killCounterStats',
-        lastSaveTime: 0,
-        SAVE_THROTTLE: 2000, // Throttle saves to once per 2 seconds
-        pendingSave: false,
 
         RANK_ORDER: {
             'TITAN': 0,
@@ -3186,31 +3052,11 @@
         },
 
         saveStats() {
-            const now = Date.now();
-            const timeSinceLastSave = now - this.lastSaveTime;
-
-            // If we recently saved, schedule a delayed save instead
-            if (timeSinceLastSave < this.SAVE_THROTTLE) {
-                if (!this.pendingSave) {
-                    this.pendingSave = true;
-                    setTimeout(() => {
-                        this.pendingSave = false;
-                        this.doSaveStats();
-                    }, this.SAVE_THROTTLE - timeSinceLastSave);
-                }
-                return;
-            }
-
-            this.doSaveStats();
-        },
-
-        doSaveStats() {
             const toSave = {};
             for (const [name, data] of this.stats.entries()) {
                 toSave[name] = data;
             }
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(toSave));
-            this.lastSaveTime = Date.now();
         },
 
         loadStats() {
@@ -3462,12 +3308,54 @@
                 row.style.transform = 'translateX(0)';
             });
 
-            const deleteBtn = document.createElement('button');
-            deleteBtn.textContent = '🗑️';
-            Object.assign(deleteBtn.style, {
+            // Kontener na przyciski akcji
+            const actionBtns = document.createElement('div');
+            Object.assign(actionBtns.style, {
                 position: 'absolute',
                 top: '6px',
                 right: '6px',
+                display: 'flex',
+                gap: '4px'
+            });
+
+            // Przycisk ustawień
+            const settingsBtn = document.createElement('button');
+            settingsBtn.textContent = '⚙️';
+            Object.assign(settingsBtn.style, {
+                background: 'rgba(100,100,255,0.2)',
+                border: '1px solid #6464ff',
+                color: '#9999ff',
+                cursor: 'pointer',
+                padding: '3px 5px',
+                borderRadius: '4px',
+                fontSize: '10px',
+                transition: 'all 0.2s ease',
+                lineHeight: '1',
+                width: '20px',
+                height: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+            });
+
+            settingsBtn.addEventListener('mouseenter', () => {
+                settingsBtn.style.background = 'rgba(100,100,255,0.4)';
+                settingsBtn.style.transform = 'scale(1.1) rotate(90deg)';
+            });
+
+            settingsBtn.addEventListener('mouseleave', () => {
+                settingsBtn.style.background = 'rgba(100,100,255,0.2)';
+                settingsBtn.style.transform = 'scale(1) rotate(0deg)';
+            });
+
+            settingsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.openEditStatsPopup(data);
+            });
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '🗑️';
+            Object.assign(deleteBtn.style, {
                 background: 'rgba(255,0,0,0.2)',
                 border: '1px solid #ff0000',
                 color: '#ff6666',
@@ -3499,6 +3387,9 @@
                 this.saveStats();
                 this.updatePanel();
             });
+
+            actionBtns.appendChild(settingsBtn);
+            actionBtns.appendChild(deleteBtn);
 
             const leftColumn = document.createElement('div');
             Object.assign(leftColumn.style, {
@@ -3622,9 +3513,256 @@
 
             row.appendChild(leftColumn);
             row.appendChild(rightColumn);
-            row.appendChild(deleteBtn);
+            row.appendChild(actionBtns);
 
             return row;
+        },
+
+        openEditStatsPopup(data) {
+            // Usuń istniejący popup jeśli jest
+            document.getElementById('kill-counter-edit-popup')?.remove();
+
+            const popup = document.createElement('div');
+            popup.id = 'kill-counter-edit-popup';
+            Object.assign(popup.style, {
+                position: 'fixed',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                padding: '20px',
+                backgroundColor: '#0b2505',
+                borderRadius: '12px',
+                color: 'white',
+                fontFamily: 'Times New Roman',
+                fontSize: '14px',
+                zIndex: '10000',
+                minWidth: '300px',
+                boxShadow: '0 4px 25px rgba(0,0,0,0.8)',
+                border: '2px solid #1a4d0d'
+            });
+
+            // Header
+            const header = document.createElement('div');
+            Object.assign(header.style, {
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '15px',
+                paddingBottom: '10px',
+                borderBottom: '1px solid #1a4d0d'
+            });
+
+            const title = document.createElement('span');
+            title.textContent = `Edycja: ${data.name}`;
+            Object.assign(title.style, {
+                fontSize: '16px',
+                fontWeight: 'bold'
+            });
+
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = '✖';
+            Object.assign(closeBtn.style, {
+                background: 'transparent',
+                border: 'none',
+                color: '#CC5252',
+                fontSize: '18px',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                transition: 'all 0.2s ease'
+            });
+            closeBtn.addEventListener('click', () => popup.remove());
+            closeBtn.addEventListener('mouseenter', () => {
+                closeBtn.style.color = '#ff6666';
+                closeBtn.style.background = 'rgba(255,255,255,0.1)';
+            });
+            closeBtn.addEventListener('mouseleave', () => {
+                closeBtn.style.color = '#CC5252';
+                closeBtn.style.background = 'transparent';
+            });
+
+            header.appendChild(title);
+            header.appendChild(closeBtn);
+
+            // Formularz
+            const form = document.createElement('div');
+            Object.assign(form.style, {
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+            });
+
+            const itemColors = {
+                kills: '#ffffff',
+                unique: GM_getValue('highlightColorUnique', '#f5b536'),
+                heroic: GM_getValue('highlightColorHeroic', '#3193f5'),
+                legendary: GM_getValue('highlightColorLegendary', '#d1249e')
+            };
+
+            const fields = [
+                { key: 'kills', label: 'Ubicia', color: itemColors.kills },
+                { key: 'unique', label: 'Unikaty', color: itemColors.unique },
+                { key: 'heroic', label: 'Heroiczne', color: itemColors.heroic },
+                { key: 'legendary', label: 'Legendarne', color: itemColors.legendary }
+            ];
+
+            const inputs = {};
+
+            fields.forEach(field => {
+                const fieldRow = document.createElement('div');
+                Object.assign(fieldRow.style, {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '10px'
+                });
+
+                const label = document.createElement('label');
+                label.textContent = field.label;
+                Object.assign(label.style, {
+                    color: field.color,
+                    fontWeight: 'bold',
+                    fontSize: '13px',
+                    flex: '1'
+                });
+
+                const inputWrapper = document.createElement('div');
+                Object.assign(inputWrapper.style, {
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                });
+
+                const minusBtn = document.createElement('button');
+                minusBtn.textContent = '-';
+                Object.assign(minusBtn.style, {
+                    width: '28px',
+                    height: '28px',
+                    background: '#1a4d0d',
+                    border: '1px solid #2d7a1a',
+                    color: 'white',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    transition: 'all 0.2s ease'
+                });
+                minusBtn.addEventListener('mouseenter', () => minusBtn.style.background = '#2d7a1a');
+                minusBtn.addEventListener('mouseleave', () => minusBtn.style.background = '#1a4d0d');
+
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.min = '0';
+                input.value = data[field.key] || 0;
+                Object.assign(input.style, {
+                    width: '60px',
+                    padding: '6px 8px',
+                    background: '#061d02',
+                    border: `1px solid ${field.color}55`,
+                    color: 'white',
+                    borderRadius: '4px',
+                    textAlign: 'center',
+                    fontSize: '14px',
+                    fontFamily: 'monospace'
+                });
+                inputs[field.key] = input;
+
+                const plusBtn = document.createElement('button');
+                plusBtn.textContent = '+';
+                Object.assign(plusBtn.style, {
+                    width: '28px',
+                    height: '28px',
+                    background: '#1a4d0d',
+                    border: '1px solid #2d7a1a',
+                    color: 'white',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    transition: 'all 0.2s ease'
+                });
+                plusBtn.addEventListener('mouseenter', () => plusBtn.style.background = '#2d7a1a');
+                plusBtn.addEventListener('mouseleave', () => plusBtn.style.background = '#1a4d0d');
+
+                minusBtn.addEventListener('click', () => {
+                    const val = parseInt(input.value) || 0;
+                    input.value = Math.max(0, val - 1);
+                });
+
+                plusBtn.addEventListener('click', () => {
+                    const val = parseInt(input.value) || 0;
+                    input.value = val + 1;
+                });
+
+                inputWrapper.appendChild(minusBtn);
+                inputWrapper.appendChild(input);
+                inputWrapper.appendChild(plusBtn);
+
+                fieldRow.appendChild(label);
+                fieldRow.appendChild(inputWrapper);
+                form.appendChild(fieldRow);
+            });
+
+            // Przyciski akcji
+            const actions = document.createElement('div');
+            Object.assign(actions.style, {
+                display: 'flex',
+                gap: '10px',
+                marginTop: '15px',
+                justifyContent: 'flex-end'
+            });
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Anuluj';
+            Object.assign(cancelBtn.style, {
+                padding: '8px 16px',
+                background: '#333',
+                border: '1px solid #555',
+                color: 'white',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                transition: 'all 0.2s ease'
+            });
+            cancelBtn.addEventListener('mouseenter', () => cancelBtn.style.background = '#444');
+            cancelBtn.addEventListener('mouseleave', () => cancelBtn.style.background = '#333');
+            cancelBtn.addEventListener('click', () => popup.remove());
+
+            const saveBtn = document.createElement('button');
+            saveBtn.textContent = 'Zapisz';
+            Object.assign(saveBtn.style, {
+                padding: '8px 16px',
+                background: '#1a4d0d',
+                border: '1px solid #2d7a1a',
+                color: 'white',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 'bold',
+                transition: 'all 0.2s ease'
+            });
+            saveBtn.addEventListener('mouseenter', () => saveBtn.style.background = '#2d7a1a');
+            saveBtn.addEventListener('mouseleave', () => saveBtn.style.background = '#1a4d0d');
+            saveBtn.addEventListener('click', () => {
+                // Aktualizuj dane
+                data.kills = parseInt(inputs.kills.value) || 0;
+                data.unique = parseInt(inputs.unique.value) || 0;
+                data.heroic = parseInt(inputs.heroic.value) || 0;
+                data.legendary = parseInt(inputs.legendary.value) || 0;
+
+                this.stats.set(data.name, data);
+                this.saveStats();
+                this.updatePanel();
+                popup.remove();
+            });
+
+            actions.appendChild(cancelBtn);
+            actions.appendChild(saveBtn);
+
+            popup.appendChild(header);
+            popup.appendChild(form);
+            popup.appendChild(actions);
+            document.body.appendChild(popup);
         },
 
         makeDraggable(el) {
@@ -3870,11 +4008,9 @@
         compactMode: false,
         timersList: null,
         globalInterval: null,
-        STORAGE_POS: 'positionPanelTimer',
         STORAGE_KEY: 'minutnikTimers',
-        lastSaveTime: 0,
-        SAVE_THROTTLE: 5000, // Throttle localStorage saves to once per 5 seconds
-        pendingSave: false,
+        STORAGE_POS: 'positionPanelTimer',
+        currentCharacter: null,
 
         toggle(enabled) {
             GM_setValue('minutnikEnabled', enabled);
@@ -3883,6 +4019,15 @@
                 this.loadTimers();
                 this.init();
                 BattleMonitor.subscribe(this.handleBattleEvent.bind(this));
+                // Pokaż minutnik zawsze gdy włączony
+                if (this.container) {
+                    this.container.style.display = 'block';
+                    if (this.timers.size === 0) {
+                        this.renderEmptyState();
+                    } else {
+                        this.updateAllTimers();
+                    }
+                }
             } else {
                 BattleMonitor.unsubscribe(this.handleBattleEvent.bind(this));
 
@@ -3902,6 +4047,17 @@
             document.body.appendChild(this.container);
             this.restorePosition();
             this.makeDraggable(this.container);
+
+            // Pokaż minutnik i renderuj odpowiednią zawartość
+            this.container.style.display = 'block';
+            if (this.timers.size === 0) {
+                this.renderEmptyState();
+            } else {
+                if (!this.globalInterval) {
+                    this.globalInterval = setInterval(() => this.updateAllTimers(), 1000);
+                }
+                this.updateAllTimers();
+            }
         },
 
         handleBattleEvent(event, data) {
@@ -4034,7 +4190,7 @@
             console.log('[Minutnik] Zapisano moby:', this.currentBattleMobs);
         },
 
-        addTimersForMobs(mobs) {
+        async addTimersForMobs(mobs) {
             if (!mobs || mobs.length === 0) {
                 console.log('[Minutnik] Brak mobów do dodania');
                 return;
@@ -4042,23 +4198,68 @@
 
             console.log('[Minutnik] Dodawanie timerów dla mobów:', mobs);
 
-            // Use global CharacterManager instead of fetching on every kill
-            const character = CharacterManager.getCharacter();
+            const character = await this.getCurrentCharacter();
 
             for (const mob of mobs) {
                 if (this.timers.has(mob.name)) {
-                    console.log('[Minutnik] Timer dla', mob.name, 'już istnieje - pomijam');
-                    continue;
+                    console.log('[Minutnik] Timer dla', mob.name, 'już istnieje - resetuję timer');
+                    this.timers.delete(mob.name);
                 }
 
                 const { minTime, maxTime } = this.calculateRespawnTime(mob.level, mob.rank);
 
                 this.addTimer(minTime, maxTime, mob.name, mob.rank, mob.level, character, mob.image);
-                console.log('[Minutnik] Dodano timer dla:', mob.name, 'min:', minTime, 'max:', maxTime);
+                console.log('[Minutnik] Dodano/zresetowano timer dla:', mob.name, 'min:', minTime, 'max:', maxTime);
             }
         },
 
-        // getCurrentCharacter is now handled by global CharacterManager
+        async getCurrentCharacter() {
+            try {
+                const resCurrent = await fetch(CONFIG.API.CURRENTCHARACTER, {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!resCurrent.ok) {
+                    console.error('[Minutnik] Błąd pobierania game-credentials:', resCurrent.status);
+                    return null;
+                }
+
+                const gameInfo = await resCurrent.json();
+
+                const res = await fetch(CONFIG.API.CHARACTERS, {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!res.ok) {
+                    console.error('[Minutnik] Błąd pobierania characters:', res.status);
+                    return null;
+                }
+
+                const characters = await res.json();
+                const currentCharacter = characters.find(c => c.id === gameInfo.characterId);
+
+                if (currentCharacter) {
+                    return {
+                        id: currentCharacter.id,
+                        name: currentCharacter.name,
+                        src: currentCharacter.src,
+                        profession: currentCharacter.profession,
+                        lvl: currentCharacter.lvl
+                    };
+                }
+            } catch (e) {
+                console.error('[Minutnik] Błąd pobierania postaci:', e);
+            }
+            return null;
+        },
 
         calculateRespawnTime(level, rank) {
             const lvl = parseInt(level, 10);
@@ -4129,31 +4330,11 @@
         },
 
         saveTimers() {
-            const now = Date.now();
-            const timeSinceLastSave = now - this.lastSaveTime;
-
-            // If we recently saved, schedule a delayed save instead
-            if (timeSinceLastSave < this.SAVE_THROTTLE) {
-                if (!this.pendingSave) {
-                    this.pendingSave = true;
-                    setTimeout(() => {
-                        this.pendingSave = false;
-                        this.doSaveTimers();
-                    }, this.SAVE_THROTTLE - timeSinceLastSave);
-                }
-                return;
-            }
-
-            this.doSaveTimers();
-        },
-
-        doSaveTimers() {
             const toSave = {};
             for (const [mobName, data] of this.timers.entries()) {
                 toSave[mobName] = data;
             }
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(toSave));
-            this.lastSaveTime = Date.now();
         },
 
         loadTimers() {
@@ -4185,6 +4366,21 @@
             const now = Date.now();
             this.timersList.innerHTML = '';
 
+            // Najpierw usuń wygasłe timery z mapy i odtwórz dźwięk
+            const expiredTimers = [];
+            for (const [mobName, data] of this.timers.entries()) {
+                const maxDiff = Math.floor((data.maxEndTime - now) / 1000);
+                if (maxDiff <= 0) {
+                    expiredTimers.push(mobName);
+                }
+            }
+
+            if (expiredTimers.length > 0) {
+                const audioUrl = GM_getValue('audioUrlMinutnik', 'https://files.catbox.moe/od2lcz.mp3');
+                Utils.playAudio(audioUrl);
+                expiredTimers.forEach(mobName => this.timers.delete(mobName));
+            }
+
             const sortedTimers = [...this.timers.entries()]
             .map(([mobName, data]) => ({
                 mobName,
@@ -4198,12 +4394,7 @@
                 const { minEndTime, maxEndTime, rank, mobLvl, totalTime } = data;
                 const minDiff = Math.floor((minEndTime - now) / 1000);
 
-                if (maxDiff <= 0) {
-                    const audioUrl = GM_getValue('audioUrlMinutnik', 'https://files.catbox.moe/od2lcz.mp3');
-                    Utils.playAudio(audioUrl);
-                    this.timers.delete(mobName);
-                    continue;
-                } else if (minDiff === 0) {
+                if (minDiff === 0) {
                     const audioUrl = GM_getValue('audioUrlMinutnik', 'https://files.catbox.moe/od2lcz.mp3');
                     Utils.playAudio(audioUrl);
                 }
@@ -4212,23 +4403,39 @@
                 this.timersList.appendChild(timerElement);
             }
 
-            if (this.timers.size === 0) {
-                clearInterval(this.globalInterval);
-                this.globalInterval = null;
-                this.container.style.display = 'none';
-                this.timersList.innerHTML = '';
-            } else {
-                this.container.style.display = 'block';
-            }
-
+            // Zapisz timery do localStorage
             this.saveTimers();
 
+            // Minutnik zawsze widoczny, ale pokaż "brak timerów" gdy pusta lista
             if (!GM_getValue('minutnikEnabled', false)) {
                 clearInterval(this.globalInterval);
                 this.globalInterval = null;
                 this.container.style.display = 'none';
                 this.timersList.innerHTML = '';
+                return;
             }
+
+            this.container.style.display = 'block';
+
+            if (this.timers.size === 0) {
+                clearInterval(this.globalInterval);
+                this.globalInterval = null;
+                this.renderEmptyState();
+            }
+        },
+
+        renderEmptyState() {
+            this.timersList.innerHTML = '';
+            const emptyMsg = document.createElement('div');
+            Object.assign(emptyMsg.style, {
+                textAlign: 'center',
+                padding: '15px 10px',
+                color: '#888',
+                fontStyle: 'italic',
+                fontSize: '13px'
+            });
+            emptyMsg.textContent = 'Brak timerów';
+            this.timersList.appendChild(emptyMsg);
         },
 
         createContainer() {
@@ -4893,7 +5100,7 @@
 
         startChecking() {
             setTimeout(() => this.checkForHeroes(), 200);
-            this.checkInterval = setInterval(() => this.checkForHeroes(), 3000);
+            this.checkInterval = setInterval(() => this.checkForHeroes(), 1000);
         },
 
         stopChecking() {
@@ -6117,26 +6324,17 @@
             label.appendChild(slider);
             wrapper.appendChild(label);
 
-            // Update visual state without triggering network operations
-            const updateVisualState = () => {
+            input.addEventListener('change', () => {
                 slider.style.backgroundColor = input.checked ? '#4CAF50' : '#1a4d0d';
                 slider.style.borderColor = input.checked ? '#66bb6a' : '#2d7a1a';
                 circle.style.transform = input.checked ? 'translateX(24px)' : 'translateX(0)';
                 circle.style.boxShadow = input.checked ?
                     '0 2px 6px rgba(76,175,80,0.5)' : '0 2px 4px rgba(0,0,0,0.3)';
-            };
-
-            input.addEventListener('change', () => {
-                updateVisualState();
                 addon.onToggle(input.checked);
-                // Only reinit HotKeys if the hotkeys addon was toggled
-                if (addon.id === 'hotKeysEnabled') {
-                    HotKeys.toggle(input.checked);
-                }
+                HotKeys.toggle(GM_getValue('hotKeysEnabled'));
             });
 
-            // Just update visual state on panel open, don't trigger toggles
-            setTimeout(() => updateVisualState(), 0);
+            setTimeout(() => input.dispatchEvent(new Event('change')), 0);
             return wrapper;
         },
 
@@ -6973,9 +7171,6 @@
 
     // ======================== INICJALIZACJA ========================
     window.addEventListener('load', () => {
-        // Initialize character manager first (fetches character data on page load)
-        CharacterManager.init();
-
         HotKeys.init();
         Minutnik.init();
         KillCounter.init();
