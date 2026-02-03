@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      4.6.0
+// @version      4.6.1
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -4259,9 +4259,6 @@
                     Utils.playAudio(audioUrl);
                     this.timers.delete(mobName);
                     continue;
-                } else if (minDiff === 0) {
-                    const audioUrl = GM_getValue('audioUrlMinutnik', 'https://files.catbox.moe/od2lcz.mp3');
-                    Utils.playAudio(audioUrl);
                 }
 
                 const timerElement = this.createTimerElement(mobName, rank, mobLvl, minDiff, maxDiff, totalTime);
