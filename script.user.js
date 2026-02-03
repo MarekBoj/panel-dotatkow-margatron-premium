@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      4.5.9
+// @version      4.6.0
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -257,7 +257,6 @@
             { name: 'Tanroth', lvl: '285', rank: 'TITAN' },
             { name: 'Biała Dama', lvl: '40', rank: 'HERO' },
             { name: 'Zjawa Pustej Maski', lvl: '43', rank: 'ELITE_II' },
-            { name: 'Karnawałowa Piękność', lvl: '35', rank: 'ELITE' },
             { name: 'Dowódca Ghuli', lvl: '45', rank: 'ELITE' },
             { name: 'Łowca skór', lvl: '81', rank: 'ELITE' },
             { name: 'Zarządca magazynu', lvl: '82', rank: 'ELITE' },
@@ -4080,16 +4079,30 @@
                     this.timers.delete(mob.name);
                 }
 
-                const { minTime, maxTime } = this.calculateRespawnTime(mob.level, mob.rank);
+                const { minTime, maxTime } = this.calculateRespawnTime(mob.level, mob.rank, mob.name);
 
                 this.addTimer(minTime, maxTime, mob.name, mob.rank, mob.level, this.currentCharacter, mob.image);
                 console.log('[Minutnik] Dodano timer dla:', mob.name, 'min:', minTime, 'max:', maxTime);
             }
         },
 
-        calculateRespawnTime(level, rank) {
+        calculateRespawnTime(level, rank, mobName) {
             const lvl = parseInt(level, 10);
             let baseTime;
+
+            if (mobName === "Biała Dama") {
+                return {
+                    minTime: 2200,
+                    maxTime: 3100
+                };
+            }
+
+           if (mobName === "Zjawa Pustej Maski") {
+                return {
+                    minTime: 420,
+                    maxTime: 470
+                };
+            }
 
             if (lvl <= 150) {
                 baseTime = 40 + 10.85 * lvl - 0.02721 * Math.pow(lvl, 2);
