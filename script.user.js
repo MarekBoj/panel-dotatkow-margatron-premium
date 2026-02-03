@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      4.6.1
+// @version      4.6.2
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -2262,7 +2262,7 @@
         toggle(enabled) {
             GM_setValue('autoAgressiveEnabled', enabled);
             if (enabled) {
-                intervalManager.set('autoFight', () => this.execute(), 50);
+                intervalManager.set('autoFight', () => this.execute(), 10);
             } else {
                 intervalManager.clear('autoFight');
             }
