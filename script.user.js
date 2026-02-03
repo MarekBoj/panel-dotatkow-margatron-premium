@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      4.5.8
+// @version      4.5.9
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -4136,7 +4136,8 @@
                 mobLvl,
                 totalTime: minTime,
                 mobImage: mobImage || null,
-                character: character || null
+                character: character || null,
+                addedAt: now
             });
 
             console.log('[Minutnik] Timer dodany:', mobName, {
@@ -4192,10 +4193,17 @@
             if (!GM_getValue('npcsOnMapEnabled', false)) return;
             if (!NpcsOnMap.npcs || NpcsOnMap.npcs.length === 0) return;
 
+            const now = Date.now();
+            const GRACE_PERIOD = 15000;
+
             const npcsOnMapNames = NpcsOnMap.npcs.map(npc => npc.name.toLowerCase());
             const timersToRemove = [];
 
             for (const [mobName, data] of this.timers.entries()) {
+                if (data.addedAt && (now - data.addedAt) < GRACE_PERIOD) {
+                    continue;
+                }
+
                 if (npcsOnMapNames.includes(mobName.toLowerCase())) {
                     timersToRemove.push(mobName);
                     console.log('[Minutnik] Mob pojawil sie na mapie:', mobName);
@@ -4250,7 +4258,7 @@
             if (this.timers.size === 0) {
                 clearInterval(this.globalInterval);
                 this.globalInterval = null;
-                this.renderStatus('Brak potworów');
+                this.renderStatus('Brak timerów');
             }
 
             this.saveTimers();
