@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      4.6.3
+// @version      4.6.5
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -5344,17 +5344,22 @@
             style.id = 'hero-arrow-styles';
             style.innerHTML = `
                 .hero-direction-arrow {
+                    font-family: 'times-new-roman';
+                    background: #0b2505;
+                    border: 2px solid #1a4d0d;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.7);
                     animation: arrow-pulse 2s ease-in-out infinite;
                 }
 
                 @keyframes arrow-pulse {
                     0%, 100% {
-                        opacity: 0.9;
-                        filter: drop-shadow(0 0 5px rgba(0,0,0,0.7));
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.7), 0 0 10px rgba(255,198,0,0.3);
+                        border-color: #1a4d0d;
                     }
                     50% {
-                        opacity: 1;
-                        filter: drop-shadow(0 0 10px rgba(255,198,0,0.8));
+                        box-shadow: 0 4px 25px rgba(0,0,0,0.9), 0 0 20px rgba(255,198,0,0.6);
+                        border-color: #ffc600;
                     }
                 }
 
@@ -5364,13 +5369,26 @@
 
                 @keyframes arrow-pulse-titan {
                     0%, 100% {
-                        opacity: 0.9;
-                        filter: drop-shadow(0 0 5px rgba(0,0,0,0.7));
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.7), 0 0 10px rgba(255,108,0,0.3);
+                        border-color: #1a4d0d;
                     }
                     50% {
-                        opacity: 1;
-                        filter: drop-shadow(0 0 10px rgba(255,108,0,0.8));
+                        box-shadow: 0 4px 25px rgba(0,0,0,0.9), 0 0 20px rgba(255,108,0,0.6);
+                        border-color: #ff6c00;
                     }
+                }
+
+                .hero-direction-arrow .arrow-icon {
+                    font-size: 24px;
+                    font-weight: bold;
+                    text-shadow: 0 0 5px rgba(0,0,0,0.8);
+                }
+
+                .hero-direction-arrow .arrow-label {
+                    font-size: 11px;
+                    font-weight: bold;
+                    margin-top: 2px;
+                    opacity: 0.9;
                 }
             `;
             document.head.appendChild(style);
@@ -5410,6 +5428,14 @@
         },
 
         drawArrow(hero, direction) {
+            const viewRange = 8; // zasięg wzroku 8x8
+            const isInRange = Math.abs(direction.deltaX) <= viewRange && Math.abs(direction.deltaY) <= viewRange;
+
+            // Jeśli heros jest w zasięgu wzroku, nie rysuj strzałki
+            if (isInRange) {
+                return null;
+            }
+
             // Spróbuj znaleźć mapę gry
             let mapWindow = document.getElementById('game-map-window');
 
@@ -5425,76 +5451,90 @@
                 return null;
             }
 
-            const arrow = document.createElement('div');
-            arrow.className = 'hero-direction-arrow' + (hero.type === 'titan' ? ' titan' : '');
-
-            const viewRange = 8; // zasięg wzroku 8x8
-            const isInRange = Math.abs(direction.deltaX) <= viewRange && Math.abs(direction.deltaY) <= viewRange;
-
             // Pobierz wymiary mapy (użyj offsetWidth/Height dla dokładności)
             const mapWidth = mapWindow.offsetWidth || mapWindow.clientWidth;
             const mapHeight = mapWindow.offsetHeight || mapWindow.clientHeight;
             const centerX = mapWidth / 2;
             const centerY = mapHeight / 2;
 
+            // Heros poza zasięgiem - strzałka na krawędzi
+            const margin = 50; // margines od krawędzi
             let posX, posY;
 
-            if (isInRange) {
-                // Heros w zasięgu wzroku - strzałka blisko środka
-                const scale = 0.35; // skala odległości od środka
-                posX = centerX + (direction.deltaX / viewRange) * (mapWidth * scale);
-                posY = centerY + (direction.deltaY / viewRange) * (mapHeight * scale);
-            } else {
-                // Heros poza zasięgiem - strzałka na krawędzi
-                const margin = 40; // margines od krawędzi
+            // Oblicz punkt przecięcia z krawędzią prostokąta
+            const slope = direction.deltaY / direction.deltaX;
 
-                // Oblicz punkt przecięcia z krawędzią prostokąta
-                const slope = direction.deltaY / direction.deltaX;
-
-                if (Math.abs(direction.deltaX) * mapHeight > Math.abs(direction.deltaY) * mapWidth) {
-                    // Przecina lewą lub prawą krawędź
-                    if (direction.deltaX > 0) {
-                        posX = mapWidth - margin;
-                        posY = centerY + slope * (posX - centerX);
-                    } else {
-                        posX = margin;
-                        posY = centerY + slope * (posX - centerX);
-                    }
+            if (Math.abs(direction.deltaX) * mapHeight > Math.abs(direction.deltaY) * mapWidth) {
+                // Przecina lewą lub prawą krawędź
+                if (direction.deltaX > 0) {
+                    posX = mapWidth - margin;
+                    posY = centerY + slope * (posX - centerX);
                 } else {
-                    // Przecina górną lub dolną krawędź
-                    if (direction.deltaY > 0) {
-                        posY = mapHeight - margin;
-                        posX = centerX + (posY - centerY) / slope;
-                    } else {
-                        posY = margin;
-                        posX = centerX + (posY - centerY) / slope;
-                    }
+                    posX = margin;
+                    posY = centerY + slope * (posX - centerX);
                 }
-
-                // Ogranicz do widocznego obszaru
-                posX = Math.max(margin, Math.min(mapWidth - margin, posX));
-                posY = Math.max(margin, Math.min(mapHeight - margin, posY));
+            } else {
+                // Przecina górną lub dolną krawędź
+                if (direction.deltaY > 0) {
+                    posY = mapHeight - margin;
+                    posX = centerX + (posY - centerY) / slope;
+                } else {
+                    posY = margin;
+                    posX = centerX + (posY - centerY) / slope;
+                }
             }
 
-            // Ustaw styl strzałki
+            // Ogranicz do widocznego obszaru
+            posX = Math.max(margin, Math.min(mapWidth - margin, posX));
+            posY = Math.max(margin, Math.min(mapHeight - margin, posY));
+
+            // Stwórz kontener strzałki
+            const arrow = document.createElement('div');
+            arrow.className = 'hero-direction-arrow' + (hero.type === 'titan' ? ' titan' : '');
+
+            // Określ symbol strzałki na podstawie kierunku
+            let arrowSymbol;
+            const angle = direction.angleInDegrees;
+
+            // Wybierz odpowiedni symbol strzałki
+            if (angle >= -22.5 && angle < 22.5) arrowSymbol = '→'; // prawo
+            else if (angle >= 22.5 && angle < 67.5) arrowSymbol = '↘'; // prawo-dół
+            else if (angle >= 67.5 && angle < 112.5) arrowSymbol = '↓'; // dół
+            else if (angle >= 112.5 && angle < 157.5) arrowSymbol = '↙'; // lewo-dół
+            else if (angle >= 157.5 || angle < -157.5) arrowSymbol = '←'; // lewo
+            else if (angle >= -157.5 && angle < -112.5) arrowSymbol = '↖'; // lewo-góra
+            else if (angle >= -112.5 && angle < -67.5) arrowSymbol = '↑'; // góra
+            else arrowSymbol = '↗'; // prawo-góra
+
+            const color = hero.type === 'titan' ? '#ff6c00' : '#ffc600';
+            const distance = Math.round(direction.distance);
+
+            arrow.innerHTML = `
+                <div class="arrow-icon" style="color: ${color};">${arrowSymbol}</div>
+                <div class="arrow-label" style="color: ${color};">${distance}p</div>
+            `;
+
+            // Ustaw styl kontenera strzałki
             Object.assign(arrow.style, {
                 position: 'absolute',
                 left: `${posX}px`,
                 top: `${posY}px`,
-                width: '0',
-                height: '0',
-                borderLeft: '12px solid transparent',
-                borderRight: '12px solid transparent',
-                borderBottom: `24px solid ${hero.type === 'titan' ? '#ff6c00' : '#ffc600'}`,
-                transform: `translate(-50%, -50%) rotate(${direction.angleInDegrees + 90}deg)`,
+                transform: 'translate(-50%, -50%)',
+                padding: '8px 12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
                 zIndex: '9999',
                 pointerEvents: 'auto',
                 cursor: 'help',
-                transition: 'all 0.3s ease'
+                transition: 'all 0.3s ease',
+                minWidth: '50px',
+                textAlign: 'center'
             });
 
             // Dodaj tooltip z informacją o herosie
-            arrow.title = `${hero.name} (${hero.x}, ${hero.y}) - ${Math.round(direction.distance)} pól`;
+            arrow.title = `${hero.name} (${hero.x}, ${hero.y}) - ${distance} pól`;
 
             mapWindow.appendChild(arrow);
             return arrow;
