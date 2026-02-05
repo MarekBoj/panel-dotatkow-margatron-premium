@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      4.6.8
+// @version      4.7.0
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -5461,13 +5461,15 @@
             const distance = Math.round(direction.distance);
 
             // Stwórz strzałkę w stylu kursora używając SVG
+            // Strzałka wskazuje w prawo (0 stopni), następnie obracamy ją zgodnie z kierunkiem
             arrow.innerHTML = `
-                <svg width="30" height="30" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Strzałka w stylu kursora -->
-                    <path d="M 5 5 L 5 22 L 12 17 L 15 25 L 18 24 L 15 16 L 22 16 Z"
+                <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Strzałka w stylu kursora wskazująca w prawo -->
+                    <path d="M 15 10 L 40 25 L 15 40 L 15 30 L 10 30 L 10 20 L 15 20 Z"
                           fill="#0b2505"
                           stroke="#FFD700"
-                          stroke-width="2"/>
+                          stroke-width="2.5"
+                          stroke-linejoin="round"/>
                 </svg>
             `;
 
