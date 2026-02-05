@@ -4922,6 +4922,10 @@
         detectedHeroes: new Set(),
         detectedTitans: new Set(),
         checkInterval: null,
+        activeHeroes: [], // przechowuje aktywnych herosów z koordynatami
+        arrowElements: [], // elementy strzałek na mapie
+        locationObserver: null, // obserwator zmian pozycji gracza
+        lastLocationId: null, // ID ostatniej lokacji (do wykrywania zmiany lokacji)
 
         HEROES_QUERY: `
         query HeroesOnMap {
@@ -4951,8 +4955,10 @@
         },
 
         startChecking() {
+            this.addArrowStyles();
             setTimeout(() => this.checkForHeroes(), 200);
             this.checkInterval = setInterval(() => this.checkForHeroes(), 1000);
+            this.setupLocationObserver();
         },
 
         stopChecking() {
@@ -4960,6 +4966,44 @@
                 clearInterval(this.checkInterval);
                 this.checkInterval = null;
             }
+            if (this.locationObserver) {
+                this.locationObserver.disconnect();
+                this.locationObserver = null;
+            }
+            this.clearArrows();
+            this.removeArrowStyles();
+        },
+
+        removeArrowStyles() {
+            const style = document.getElementById('hero-arrow-styles');
+            if (style) {
+                style.remove();
+            }
+        },
+
+        setupLocationObserver() {
+            // Obserwuj zmiany w pozycji gracza, aby aktualizować strzałki
+            const locationDiv = document.querySelector('.location');
+            if (!locationDiv) {
+                setTimeout(() => this.setupLocationObserver(), 1000);
+                return;
+            }
+
+            if (this.locationObserver) {
+                this.locationObserver.disconnect();
+            }
+
+            this.locationObserver = new MutationObserver(() => {
+                if (this.activeHeroes.length > 0) {
+                    this.updateArrows();
+                }
+            });
+
+            this.locationObserver.observe(locationDiv, {
+                childList: true,
+                characterData: true,
+                subtree: true
+            });
         },
 
         async checkForHeroes() {
@@ -4974,14 +5018,23 @@
                 const location = data.location;
                 const npcs = data.npcs || [];
 
+                // Resetuj wykryte herosi przy zmianie lokacji
+                if (this.lastLocationId && this.lastLocationId !== location.id) {
+                    console.log('[HeroDetector] Zmiana lokacji - reset wykrytych herosów');
+                    this.detectedHeroes.clear();
+                    this.detectedTitans.clear();
+                    this.alertDisplayed = false;
+                }
+                this.lastLocationId = location.id;
+
                 let foundEntities = [];
+                let currentHeroes = []; // wszyscy aktualnie obecni herosi/tytani
 
                 npcs.forEach(npc => {
                     const rank = npc.rank?.toUpperCase();
 
-                    if (rank === 'HERO' && !this.detectedHeroes.has(npc.name)) {
-                        this.detectedHeroes.add(npc.name);
-                        foundEntities.push({
+                    if (rank === 'HERO') {
+                        const heroData = {
                             name: npc.name,
                             level: npc.lvl || '??',
                             type: 'hero',
@@ -4990,12 +5043,18 @@
                             src: npc.src,
                             locationId: location.id,
                             locationName: location.name
-                        });
+                        };
+
+                        currentHeroes.push(heroData);
+
+                        if (!this.detectedHeroes.has(npc.name)) {
+                            this.detectedHeroes.add(npc.name);
+                            foundEntities.push(heroData);
+                        }
                     }
 
-                    if (rank === 'TITAN' && !this.detectedTitans.has(npc.name)) {
-                        this.detectedTitans.add(npc.name);
-                        foundEntities.push({
+                    if (rank === 'TITAN') {
+                        const titanData = {
                             name: npc.name,
                             level: npc.lvl || '??',
                             type: 'titan',
@@ -5004,9 +5063,26 @@
                             src: npc.src,
                             locationId: location.id,
                             locationName: location.name
-                        });
+                        };
+
+                        currentHeroes.push(titanData);
+
+                        if (!this.detectedTitans.has(npc.name)) {
+                            this.detectedTitans.add(npc.name);
+                            foundEntities.push(titanData);
+                        }
                     }
                 });
+
+                // Zaktualizuj listę aktywnych herosów
+                this.activeHeroes = currentHeroes;
+
+                // Zaktualizuj strzałki (tylko jeśli są jakieś herosi)
+                if (currentHeroes.length > 0) {
+                    this.updateArrows();
+                } else {
+                    this.clearArrows();
+                }
 
                 if (foundEntities.length > 0 && !this.alertDisplayed) {
                     this.showAlert(foundEntities);
@@ -5257,6 +5333,209 @@
                 console.error('[HeroDetector] Fallback copy failed:', err);
             }
             document.body.removeChild(textArea);
+        },
+
+        // =================== STRZAŁKI DO HEROSÓW ===================
+
+        addArrowStyles() {
+            if (document.getElementById('hero-arrow-styles')) return;
+
+            const style = document.createElement('style');
+            style.id = 'hero-arrow-styles';
+            style.innerHTML = `
+                .hero-direction-arrow {
+                    animation: arrow-pulse 2s ease-in-out infinite;
+                }
+
+                @keyframes arrow-pulse {
+                    0%, 100% {
+                        opacity: 0.9;
+                        filter: drop-shadow(0 0 5px rgba(0,0,0,0.7));
+                    }
+                    50% {
+                        opacity: 1;
+                        filter: drop-shadow(0 0 10px rgba(255,198,0,0.8));
+                    }
+                }
+
+                .hero-direction-arrow.titan {
+                    animation: arrow-pulse-titan 2s ease-in-out infinite;
+                }
+
+                @keyframes arrow-pulse-titan {
+                    0%, 100% {
+                        opacity: 0.9;
+                        filter: drop-shadow(0 0 5px rgba(0,0,0,0.7));
+                    }
+                    50% {
+                        opacity: 1;
+                        filter: drop-shadow(0 0 10px rgba(255,108,0,0.8));
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        },
+
+        getPlayerCoordinates() {
+            const locationDiv = document.querySelector('.location');
+            if (!locationDiv) return null;
+
+            const text = locationDiv.textContent.trim();
+            const match = text.match(/(\d+),\s*(\d+)/);
+
+            if (match) {
+                return {
+                    x: parseInt(match[1]),
+                    y: parseInt(match[2])
+                };
+            }
+            return null;
+        },
+
+        calculateDirection(playerX, playerY, heroX, heroY) {
+            const deltaX = heroX - playerX;
+            const deltaY = heroY - playerY;
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+            // Oblicz kąt w radianach
+            const angle = Math.atan2(deltaY, deltaX);
+
+            return {
+                deltaX,
+                deltaY,
+                distance,
+                angle,
+                angleInDegrees: angle * (180 / Math.PI)
+            };
+        },
+
+        drawArrow(hero, direction) {
+            // Spróbuj znaleźć mapę gry
+            let mapWindow = document.getElementById('game-map-window');
+
+            // Jeśli nie ma #game-map-window, spróbuj znaleźć mapę w inny sposób
+            if (!mapWindow) {
+                mapWindow = document.querySelector('[id*="map"]') ||
+                           document.querySelector('.map-container') ||
+                           document.querySelector('.game-map');
+            }
+
+            if (!mapWindow) {
+                console.warn('[HeroDetector] Nie znaleziono kontenera mapy');
+                return null;
+            }
+
+            const arrow = document.createElement('div');
+            arrow.className = 'hero-direction-arrow' + (hero.type === 'titan' ? ' titan' : '');
+
+            const viewRange = 8; // zasięg wzroku 8x8
+            const isInRange = Math.abs(direction.deltaX) <= viewRange && Math.abs(direction.deltaY) <= viewRange;
+
+            // Pobierz wymiary mapy (użyj offsetWidth/Height dla dokładności)
+            const mapWidth = mapWindow.offsetWidth || mapWindow.clientWidth;
+            const mapHeight = mapWindow.offsetHeight || mapWindow.clientHeight;
+            const centerX = mapWidth / 2;
+            const centerY = mapHeight / 2;
+
+            let posX, posY;
+
+            if (isInRange) {
+                // Heros w zasięgu wzroku - strzałka blisko środka
+                const scale = 0.35; // skala odległości od środka
+                posX = centerX + (direction.deltaX / viewRange) * (mapWidth * scale);
+                posY = centerY + (direction.deltaY / viewRange) * (mapHeight * scale);
+            } else {
+                // Heros poza zasięgiem - strzałka na krawędzi
+                const margin = 40; // margines od krawędzi
+
+                // Oblicz punkt przecięcia z krawędzią prostokąta
+                const slope = direction.deltaY / direction.deltaX;
+
+                if (Math.abs(direction.deltaX) * mapHeight > Math.abs(direction.deltaY) * mapWidth) {
+                    // Przecina lewą lub prawą krawędź
+                    if (direction.deltaX > 0) {
+                        posX = mapWidth - margin;
+                        posY = centerY + slope * (posX - centerX);
+                    } else {
+                        posX = margin;
+                        posY = centerY + slope * (posX - centerX);
+                    }
+                } else {
+                    // Przecina górną lub dolną krawędź
+                    if (direction.deltaY > 0) {
+                        posY = mapHeight - margin;
+                        posX = centerX + (posY - centerY) / slope;
+                    } else {
+                        posY = margin;
+                        posX = centerX + (posY - centerY) / slope;
+                    }
+                }
+
+                // Ogranicz do widocznego obszaru
+                posX = Math.max(margin, Math.min(mapWidth - margin, posX));
+                posY = Math.max(margin, Math.min(mapHeight - margin, posY));
+            }
+
+            // Ustaw styl strzałki
+            Object.assign(arrow.style, {
+                position: 'absolute',
+                left: `${posX}px`,
+                top: `${posY}px`,
+                width: '0',
+                height: '0',
+                borderLeft: '12px solid transparent',
+                borderRight: '12px solid transparent',
+                borderBottom: `24px solid ${hero.type === 'titan' ? '#ff6c00' : '#ffc600'}`,
+                transform: `translate(-50%, -50%) rotate(${direction.angleInDegrees + 90}deg)`,
+                zIndex: '9999',
+                pointerEvents: 'auto',
+                cursor: 'help',
+                transition: 'all 0.3s ease'
+            });
+
+            // Dodaj tooltip z informacją o herosie
+            arrow.title = `${hero.name} (${hero.x}, ${hero.y}) - ${Math.round(direction.distance)} pól`;
+
+            mapWindow.appendChild(arrow);
+            return arrow;
+        },
+
+        updateArrows() {
+            // Usuń stare strzałki
+            this.arrowElements.forEach(arrow => {
+                if (arrow && arrow.parentNode) {
+                    arrow.remove();
+                }
+            });
+            this.arrowElements = [];
+
+            const playerCoords = this.getPlayerCoordinates();
+            if (!playerCoords || this.activeHeroes.length === 0) return;
+
+            // Rysuj nowe strzałki dla każdego aktywnego herosa
+            this.activeHeroes.forEach(hero => {
+                const direction = this.calculateDirection(
+                    playerCoords.x,
+                    playerCoords.y,
+                    hero.x,
+                    hero.y
+                );
+
+                const arrow = this.drawArrow(hero, direction);
+                if (arrow) {
+                    this.arrowElements.push(arrow);
+                }
+            });
+        },
+
+        clearArrows() {
+            this.arrowElements.forEach(arrow => {
+                if (arrow && arrow.parentNode) {
+                    arrow.remove();
+                }
+            });
+            this.arrowElements = [];
+            this.activeHeroes = [];
         },
     };
 
