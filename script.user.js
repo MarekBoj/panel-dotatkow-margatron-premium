@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      4.6.5
+// @version      4.6.6
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -5344,51 +5344,17 @@
             style.id = 'hero-arrow-styles';
             style.innerHTML = `
                 .hero-direction-arrow {
-                    font-family: 'times-new-roman';
-                    background: #0b2505;
-                    border: 2px solid #1a4d0d;
-                    border-radius: 8px;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+                    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
                     animation: arrow-pulse 2s ease-in-out infinite;
                 }
 
                 @keyframes arrow-pulse {
                     0%, 100% {
-                        box-shadow: 0 4px 20px rgba(0,0,0,0.7), 0 0 10px rgba(255,198,0,0.3);
-                        border-color: #1a4d0d;
+                        filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
                     }
                     50% {
-                        box-shadow: 0 4px 25px rgba(0,0,0,0.9), 0 0 20px rgba(255,198,0,0.6);
-                        border-color: #ffc600;
+                        filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.9));
                     }
-                }
-
-                .hero-direction-arrow.titan {
-                    animation: arrow-pulse-titan 2s ease-in-out infinite;
-                }
-
-                @keyframes arrow-pulse-titan {
-                    0%, 100% {
-                        box-shadow: 0 4px 20px rgba(0,0,0,0.7), 0 0 10px rgba(255,108,0,0.3);
-                        border-color: #1a4d0d;
-                    }
-                    50% {
-                        box-shadow: 0 4px 25px rgba(0,0,0,0.9), 0 0 20px rgba(255,108,0,0.6);
-                        border-color: #ff6c00;
-                    }
-                }
-
-                .hero-direction-arrow .arrow-icon {
-                    font-size: 24px;
-                    font-weight: bold;
-                    text-shadow: 0 0 5px rgba(0,0,0,0.8);
-                }
-
-                .hero-direction-arrow .arrow-label {
-                    font-size: 11px;
-                    font-weight: bold;
-                    margin-top: 2px;
-                    opacity: 0.9;
                 }
             `;
             document.head.appendChild(style);
@@ -5490,28 +5456,19 @@
 
             // Stwórz kontener strzałki
             const arrow = document.createElement('div');
-            arrow.className = 'hero-direction-arrow' + (hero.type === 'titan' ? ' titan' : '');
+            arrow.className = 'hero-direction-arrow';
 
-            // Określ symbol strzałki na podstawie kierunku
-            let arrowSymbol;
-            const angle = direction.angleInDegrees;
-
-            // Wybierz odpowiedni symbol strzałki
-            if (angle >= -22.5 && angle < 22.5) arrowSymbol = '→'; // prawo
-            else if (angle >= 22.5 && angle < 67.5) arrowSymbol = '↘'; // prawo-dół
-            else if (angle >= 67.5 && angle < 112.5) arrowSymbol = '↓'; // dół
-            else if (angle >= 112.5 && angle < 157.5) arrowSymbol = '↙'; // lewo-dół
-            else if (angle >= 157.5 || angle < -157.5) arrowSymbol = '←'; // lewo
-            else if (angle >= -157.5 && angle < -112.5) arrowSymbol = '↖'; // lewo-góra
-            else if (angle >= -112.5 && angle < -67.5) arrowSymbol = '↑'; // góra
-            else arrowSymbol = '↗'; // prawo-góra
-
-            const color = hero.type === 'titan' ? '#ff6c00' : '#ffc600';
             const distance = Math.round(direction.distance);
 
+            // Stwórz strzałkę w stylu kursora używając SVG
             arrow.innerHTML = `
-                <div class="arrow-icon" style="color: ${color};">${arrowSymbol}</div>
-                <div class="arrow-label" style="color: ${color};">${distance}p</div>
+                <svg width="30" height="30" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Strzałka w stylu kursora -->
+                    <path d="M 5 5 L 5 22 L 12 17 L 15 25 L 18 24 L 15 16 L 22 16 Z"
+                          fill="#0b2505"
+                          stroke="#FFD700"
+                          stroke-width="2"/>
+                </svg>
             `;
 
             // Ustaw styl kontenera strzałki
@@ -5519,18 +5476,11 @@
                 position: 'absolute',
                 left: `${posX}px`,
                 top: `${posY}px`,
-                transform: 'translate(-50%, -50%)',
-                padding: '8px 12px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
+                transform: `translate(-50%, -50%) rotate(${direction.angleInDegrees}deg)`,
                 zIndex: '9999',
                 pointerEvents: 'auto',
                 cursor: 'help',
-                transition: 'all 0.3s ease',
-                minWidth: '50px',
-                textAlign: 'center'
+                transition: 'all 0.3s ease'
             });
 
             // Dodaj tooltip z informacją o herosie
