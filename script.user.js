@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      4.7.2
+// @version      4.7.3
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -2870,11 +2870,11 @@
             container.addEventListener('mouseleave', () => {
                 container.style.background = isCurrentCharacter
                     ? 'rgba(76,175,80,0.25)'
-                    : 'rgba(255,255,255,0.03)';
+                : 'rgba(255,255,255,0.03)';
                 container.style.transform = 'translateY(0)';
                 container.style.boxShadow = isCurrentCharacter
                     ? '0 0 12px rgba(76,175,80,0.5)'
-                    : 'none';
+                : 'none';
             });
 
             container.addEventListener('click', () => this.switchCharacter(character));
@@ -4039,7 +4039,7 @@
             this.makeDraggable(this.container);
 
             if (this.timers.size === 0) {
-                this.renderStatus('Brak potworów');
+                this.renderStatus('Brak timerów do wyświetlenia');
             }
         },
 
@@ -4097,7 +4097,7 @@
                 };
             }
 
-           if (mobName === "Zjawa Pustej Maski") {
+            if (mobName === "Zjawa Pustej Maski") {
                 return {
                     minTime: 420,
                     maxTime: 470
@@ -4258,6 +4258,12 @@
                     const audioUrl = GM_getValue('audioUrlMinutnik', 'https://files.catbox.moe/od2lcz.mp3');
                     Utils.playAudio(audioUrl);
                     this.timers.delete(mobName);
+                    if (this.timers.size === 0) {
+                        clearInterval(this.globalInterval);
+                        this.globalInterval = null;
+                        this.renderStatus('Brak timerów do wyświetlenia');
+                    }
+
                     continue;
                 }
 
@@ -4268,11 +4274,10 @@
             if (this.timers.size === 0) {
                 clearInterval(this.globalInterval);
                 this.globalInterval = null;
-                this.renderStatus('Brak timerów');
+                this.renderStatus('Brak timerów do wyświetlenia');
             }
 
             this.saveTimers();
-
             if (!GM_getValue('minutnikEnabled', false)) {
                 clearInterval(this.globalInterval);
                 this.globalInterval = null;
@@ -4347,7 +4352,8 @@
             Object.assign(this.timersList.style, {
                 display: 'flex', flexDirection: 'column', gap: '6px',
                 scrollbarWidth: 'thin', scrollbarColor: '#1a4d0d #061d02',
-                maxHeight: '760px', overflowY: 'auto', paddingRight: '4px'
+                maxHeight: '760px', overflowY: 'auto', paddingRight: '4px',
+                fontSize: '12px'
             });
 
             container.appendChild(this.timersList);
@@ -5403,24 +5409,19 @@
         },
 
         drawArrow(hero, direction, existingArrow = null) {
-            const viewRange = 8; // zasięg wzroku 8x8
+            const viewRange = 8;
             const isInRange = Math.abs(direction.deltaX) <= viewRange && Math.abs(direction.deltaY) <= viewRange;
 
-            // Jeśli heros wchodzi w zasięg wzroku i istnieje strzałka, uruchom efekt fade-out
             if (isInRange && existingArrow) {
-                // Dodaj klasę fade-out
                 existingArrow.classList.add('fade-out');
 
-                // Oblicz kierunek cofania (przeciwny do kierunku wskazywania)
-                const retreatDistance = 30; // odległość cofnięcia w pikselach
+                const retreatDistance = 30;
                 const retreatX = -Math.cos(direction.angle) * retreatDistance;
                 const retreatY = -Math.sin(direction.angle) * retreatDistance;
 
-                // Pobierz aktualną transformację i dodaj przesunięcie
                 const currentTransform = existingArrow.style.transform;
                 existingArrow.style.transform = `${currentTransform} translate(${retreatX}px, ${retreatY}px)`;
 
-                // Usuń strzałkę po zakończeniu animacji (250ms)
                 setTimeout(() => {
                     if (existingArrow && existingArrow.parentNode) {
                         existingArrow.remove();
@@ -5430,19 +5431,16 @@
                 return null;
             }
 
-            // Jeśli heros jest w zasięgu wzroku i nie ma strzałki, po prostu nie rysuj
             if (isInRange) {
                 return null;
             }
 
-            // Spróbuj znaleźć mapę gry
             let mapWindow = document.getElementById('game-map-window');
 
-            // Jeśli nie ma #game-map-window, spróbuj znaleźć mapę w inny sposób
             if (!mapWindow) {
                 mapWindow = document.querySelector('[id*="map"]') ||
-                           document.querySelector('.map-container') ||
-                           document.querySelector('.game-map');
+                    document.querySelector('.map-container') ||
+                    document.querySelector('.game-map');
             }
 
             if (!mapWindow) {
@@ -5450,17 +5448,13 @@
                 return null;
             }
 
-            // Pobierz wymiary mapy (użyj offsetWidth/Height dla dokładności)
             const mapWidth = mapWindow.offsetWidth || mapWindow.clientWidth;
             const mapHeight = mapWindow.offsetHeight || mapWindow.clientHeight;
             const centerX = mapWidth / 2;
             const centerY = mapHeight / 2;
 
-            // Heros poza zasięgiem - strzałka na krawędzi
-            const margin = 50; // margines od krawędzi
+            const margin = 50
             let posX, posY;
-
-            // Oblicz punkt przecięcia z krawędzią prostokąta
             const slope = direction.deltaY / direction.deltaX;
 
             if (Math.abs(direction.deltaX) * mapHeight > Math.abs(direction.deltaY) * mapWidth) {
@@ -5473,7 +5467,6 @@
                     posY = centerY + slope * (posX - centerX);
                 }
             } else {
-                // Przecina górną lub dolną krawędź
                 if (direction.deltaY > 0) {
                     posY = mapHeight - margin;
                     posX = centerX + (posY - centerY) / slope;
@@ -5483,11 +5476,9 @@
                 }
             }
 
-            // Ogranicz do widocznego obszaru
             posX = Math.max(margin, Math.min(mapWidth - margin, posX));
             posY = Math.max(margin, Math.min(mapHeight - margin, posY));
 
-            // Jeśli istnieje strzałka, zaktualizuj jej pozycję
             if (existingArrow) {
                 Object.assign(existingArrow.style, {
                     left: `${posX}px`,
@@ -5501,27 +5492,22 @@
                 return existingArrow;
             }
 
-            // Stwórz kontener strzałki
             const arrow = document.createElement('div');
             arrow.className = 'hero-direction-arrow';
-            arrow.dataset.heroId = `${hero.x}-${hero.y}`; // identyfikator dla śledzenia
+            arrow.dataset.heroId = `${hero.x}-${hero.y}`;
 
             const distance = Math.round(direction.distance);
-
-            // Stwórz strzałkę w stylu kursora używając SVG
-            // Strzałka wskazuje w prawo (0 stopni), następnie obracamy ją zgodnie z kierunkiem
             arrow.innerHTML = `
                 <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
                     <!-- Strzałka w stylu kursora wskazująca w prawo -->
                     <path d="M 15 10 L 40 25 L 15 40 L 15 30 L 10 30 L 10 20 L 15 20 Z"
                           fill="#194317"
-                          stroke="#4caf50"
-                          stroke-width="2.5"
+                          stroke="#ffffff"
+                          stroke-width="2"
                           stroke-linejoin="round"/>
                 </svg>
             `;
 
-            // Ustaw styl kontenera strzałki
             Object.assign(arrow.style, {
                 position: 'absolute',
                 left: `${posX}px`,
@@ -5532,9 +5518,7 @@
                 cursor: 'help'
             });
 
-            // Dodaj tooltip z informacją o herosie
             arrow.title = `${hero.name} (${hero.x}, ${hero.y}) - ${distance} pól`;
-
             mapWindow.appendChild(arrow);
             return arrow;
         },
@@ -5542,7 +5526,6 @@
         updateArrows() {
             const playerCoords = this.getPlayerCoordinates();
             if (!playerCoords) {
-                // Usuń wszystkie strzałki, jeśli nie ma koordynatów gracza
                 this.arrowElements.forEach(arrow => {
                     if (arrow && arrow.parentNode) {
                         arrow.remove();
@@ -5553,7 +5536,6 @@
             }
 
             if (this.activeHeroes.length === 0) {
-                // Usuń wszystkie strzałki, jeśli nie ma aktywnych herosów
                 this.arrowElements.forEach(arrow => {
                     if (arrow && arrow.parentNode) {
                         arrow.remove();
@@ -5563,7 +5545,6 @@
                 return;
             }
 
-            // Stwórz mapę istniejących strzałek według heroId
             const existingArrowsMap = new Map();
             this.arrowElements.forEach(arrow => {
                 if (arrow && arrow.dataset.heroId) {
@@ -5573,8 +5554,6 @@
 
             const newArrowElements = [];
             const processedHeroIds = new Set();
-
-            // Zaktualizuj lub stwórz strzałki dla każdego aktywnego herosa
             this.activeHeroes.forEach(hero => {
                 const heroId = `${hero.x}-${hero.y}`;
                 processedHeroIds.add(heroId);
@@ -5594,7 +5573,6 @@
                 }
             });
 
-            // Usuń strzałki dla herosów, którzy nie są już aktywni
             existingArrowsMap.forEach((arrow, heroId) => {
                 if (!processedHeroIds.has(heroId) && arrow && arrow.parentNode) {
                     arrow.remove();
