@@ -5344,16 +5344,25 @@
             style.id = 'hero-arrow-styles';
             style.innerHTML = `
                 .hero-direction-arrow {
-                    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
+                    opacity: 1;
+                    filter: drop-shadow(0 0 8px rgba(76, 175, 80, 0.6));
                     animation: arrow-pulse 2s ease-in-out infinite;
+                    transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+                }
+
+                .hero-direction-arrow.fade-out {
+                    opacity: 0;
+                    animation: none;
                 }
 
                 @keyframes arrow-pulse {
                     0%, 100% {
-                        filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
+                        opacity: 1;
+                        filter: drop-shadow(0 0 8px rgba(76, 175, 80, 0.6));
                     }
                     50% {
-                        filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.9));
+                        opacity: 0.7;
+                        filter: drop-shadow(0 0 15px rgba(76, 175, 80, 0.9));
                     }
                 }
             `;
@@ -5393,11 +5402,35 @@
             };
         },
 
-        drawArrow(hero, direction) {
+        drawArrow(hero, direction, existingArrow = null) {
             const viewRange = 8; // zasięg wzroku 8x8
             const isInRange = Math.abs(direction.deltaX) <= viewRange && Math.abs(direction.deltaY) <= viewRange;
 
-            // Jeśli heros jest w zasięgu wzroku, nie rysuj strzałki
+            // Jeśli heros wchodzi w zasięg wzroku i istnieje strzałka, uruchom efekt fade-out
+            if (isInRange && existingArrow) {
+                // Dodaj klasę fade-out
+                existingArrow.classList.add('fade-out');
+
+                // Oblicz kierunek cofania (przeciwny do kierunku wskazywania)
+                const retreatDistance = 30; // odległość cofnięcia w pikselach
+                const retreatX = -Math.cos(direction.angle) * retreatDistance;
+                const retreatY = -Math.sin(direction.angle) * retreatDistance;
+
+                // Pobierz aktualną transformację i dodaj przesunięcie
+                const currentTransform = existingArrow.style.transform;
+                existingArrow.style.transform = `${currentTransform} translate(${retreatX}px, ${retreatY}px)`;
+
+                // Usuń strzałkę po zakończeniu animacji (250ms)
+                setTimeout(() => {
+                    if (existingArrow && existingArrow.parentNode) {
+                        existingArrow.remove();
+                    }
+                }, 250);
+
+                return null;
+            }
+
+            // Jeśli heros jest w zasięgu wzroku i nie ma strzałki, po prostu nie rysuj
             if (isInRange) {
                 return null;
             }
@@ -5454,9 +5487,24 @@
             posX = Math.max(margin, Math.min(mapWidth - margin, posX));
             posY = Math.max(margin, Math.min(mapHeight - margin, posY));
 
+            // Jeśli istnieje strzałka, zaktualizuj jej pozycję
+            if (existingArrow) {
+                Object.assign(existingArrow.style, {
+                    left: `${posX}px`,
+                    top: `${posY}px`,
+                    transform: `translate(-50%, -50%) rotate(${direction.angleInDegrees}deg)`
+                });
+
+                const distance = Math.round(direction.distance);
+                existingArrow.title = `${hero.name} (${hero.x}, ${hero.y}) - ${distance} pól`;
+
+                return existingArrow;
+            }
+
             // Stwórz kontener strzałki
             const arrow = document.createElement('div');
             arrow.className = 'hero-direction-arrow';
+            arrow.dataset.heroId = `${hero.x}-${hero.y}`; // identyfikator dla śledzenia
 
             const distance = Math.round(direction.distance);
 
@@ -5466,8 +5514,8 @@
                 <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
                     <!-- Strzałka w stylu kursora wskazująca w prawo -->
                     <path d="M 15 10 L 40 25 L 15 40 L 15 30 L 10 30 L 10 20 L 15 20 Z"
-                          fill="#0b2505"
-                          stroke="#FFD700"
+                          fill="#194317"
+                          stroke="#4caf50"
                           stroke-width="2.5"
                           stroke-linejoin="round"/>
                 </svg>
@@ -5481,8 +5529,7 @@
                 transform: `translate(-50%, -50%) rotate(${direction.angleInDegrees}deg)`,
                 zIndex: '9999',
                 pointerEvents: 'auto',
-                cursor: 'help',
-                transition: 'all 0.3s ease'
+                cursor: 'help'
             });
 
             // Dodaj tooltip z informacją o herosie
@@ -5493,19 +5540,45 @@
         },
 
         updateArrows() {
-            // Usuń stare strzałki
+            const playerCoords = this.getPlayerCoordinates();
+            if (!playerCoords) {
+                // Usuń wszystkie strzałki, jeśli nie ma koordynatów gracza
+                this.arrowElements.forEach(arrow => {
+                    if (arrow && arrow.parentNode) {
+                        arrow.remove();
+                    }
+                });
+                this.arrowElements = [];
+                return;
+            }
+
+            if (this.activeHeroes.length === 0) {
+                // Usuń wszystkie strzałki, jeśli nie ma aktywnych herosów
+                this.arrowElements.forEach(arrow => {
+                    if (arrow && arrow.parentNode) {
+                        arrow.remove();
+                    }
+                });
+                this.arrowElements = [];
+                return;
+            }
+
+            // Stwórz mapę istniejących strzałek według heroId
+            const existingArrowsMap = new Map();
             this.arrowElements.forEach(arrow => {
-                if (arrow && arrow.parentNode) {
-                    arrow.remove();
+                if (arrow && arrow.dataset.heroId) {
+                    existingArrowsMap.set(arrow.dataset.heroId, arrow);
                 }
             });
-            this.arrowElements = [];
 
-            const playerCoords = this.getPlayerCoordinates();
-            if (!playerCoords || this.activeHeroes.length === 0) return;
+            const newArrowElements = [];
+            const processedHeroIds = new Set();
 
-            // Rysuj nowe strzałki dla każdego aktywnego herosa
+            // Zaktualizuj lub stwórz strzałki dla każdego aktywnego herosa
             this.activeHeroes.forEach(hero => {
+                const heroId = `${hero.x}-${hero.y}`;
+                processedHeroIds.add(heroId);
+
                 const direction = this.calculateDirection(
                     playerCoords.x,
                     playerCoords.y,
@@ -5513,11 +5586,22 @@
                     hero.y
                 );
 
-                const arrow = this.drawArrow(hero, direction);
+                const existingArrow = existingArrowsMap.get(heroId);
+                const arrow = this.drawArrow(hero, direction, existingArrow);
+
                 if (arrow) {
-                    this.arrowElements.push(arrow);
+                    newArrowElements.push(arrow);
                 }
             });
+
+            // Usuń strzałki dla herosów, którzy nie są już aktywni
+            existingArrowsMap.forEach((arrow, heroId) => {
+                if (!processedHeroIds.has(heroId) && arrow && arrow.parentNode) {
+                    arrow.remove();
+                }
+            });
+
+            this.arrowElements = newArrowElements;
         },
 
         clearArrows() {
