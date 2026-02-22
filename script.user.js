@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      4.7.4
+// @version      4.7.5
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -4092,15 +4092,15 @@
 
             if (mobName === "Biała Dama") {
                 return {
-                    minTime: 1300,
-                    maxTime: 1700
+                    minTime: 1700,
+                    maxTime: 3000
                 };
             }
 
             if (mobName === "Zjawa Pustej Maski") {
                 return {
                     minTime: 240,
-                    maxTime: 220
+                    maxTime: 260
                 };
             }
 
