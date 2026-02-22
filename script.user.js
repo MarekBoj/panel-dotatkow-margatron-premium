@@ -266,7 +266,7 @@
             { name: 'Henry Kaprawe Oko', lvl: '114', rank: 'ELITE' },
             { name: 'Marid', lvl: '120', rank: 'ELITE' },
             { name: 'Szkielet bosmana', lvl: '130', rank: 'ELITE' },
-            { name: 'Monstrum z Bremus An', lvl: '85', rank: 'ELITE' }
+            { name: 'Monstrum z Bremus An', lvl: '85', rank: 'ELITE' } 
         ],
         API: {
             CHARACTERS: 'https://margatron.ovh/game/api/characters',
@@ -4092,15 +4092,15 @@
 
             if (mobName === "Biała Dama") {
                 return {
-                    minTime: 2200,
-                    maxTime: 3100
+                    minTime: 1300,
+                    maxTime: 1700
                 };
             }
 
             if (mobName === "Zjawa Pustej Maski") {
                 return {
-                    minTime: 420,
-                    maxTime: 470
+                    minTime: 240,
+                    maxTime: 220
                 };
             }
 
