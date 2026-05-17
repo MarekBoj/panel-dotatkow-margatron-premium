@@ -2357,7 +2357,14 @@
             const minPrice = GM_getValue('autoLootMinPrice', 10);
             const lootFiltered = GM_getValue('lootFilterApply', false);
             const rejectCommon = GM_getValue('autoLootRejectCommon', false);
+            const rejectUnique = GM_getValue('autoLootRejectUnique', false);
+            const rejectHeroic = GM_getValue('autoLootRejectHeroic', false);
+            const rejectAll = GM_getValue('autoLootRejectAll', false);
             const acceptConsumables = GM_getValue('autoConsumablesAccept', false);
+            const acceptTp = GM_getValue('autoTpAccept', false);
+            const acceptNeutral = GM_getValue('autoNeutralAccept', false);
+            const acceptArrows = GM_getValue('autoArrowsAccept', false);
+            const acceptKeys = GM_getValue('autoKeysAccept', false);
             const lootWrappers = document.querySelectorAll('.loot-wrapper');
 
             if (lootWrappers.length === 0) {
@@ -2377,21 +2384,48 @@
                 const rarity = data.schema?.inner?.rarity?.toLowerCase();
                 const type = data.schema?.inner?.category?.toLowerCase();
                 const price = parseInt(data.schema?.inner?.price || 0);
+                const isTeleport = Array.isArray(data.schema?.inner?.attributes?.teleportTo);
 
                 const isCommon = rarity === "common";
                 const isConsumable = type === "consumable";
                 const isGold = type === "golds";
+                const isKey = type === "keys";
+                const isArrow = type === "arrows";
+                const isPotion = isConsumable && !isTeleport;
+                const isScroll = isConsumable && isTeleport;
+
+                // rejectAll overrides everything
+                if (rejectAll) {
+                    wrapper.querySelector('b.no')?.click();
+                    return;
+                }
 
                 let shouldReject = true;
 
-                if (isGold || (isConsumable && acceptConsumables) ||
-                    (isCommon && !rejectCommon && price > minPrice)) {
+                if (isGold) {
                     shouldReject = false;
-                }
-
-                if (!isCommon) {
-                    shouldReject = false;
-                    blockLootAccept = true;
+                } else if (isKey) {
+                    if (acceptKeys) shouldReject = false;
+                } else if (isArrow) {
+                    if (acceptArrows) shouldReject = false;
+                } else if (isPotion) {
+                    if (acceptConsumables) shouldReject = false;
+                } else if (isScroll) {
+                    if (acceptTp) shouldReject = false;
+                } else if (isCommon) {
+                    if (!rejectCommon && price > minPrice) shouldReject = false;
+                } else if (!rarity || rarity === 'neutral') {
+                    if (acceptNeutral) shouldReject = false;
+                } else {
+                    // Non-common rarities
+                    if (rarity === 'heroic' && rejectHeroic) {
+                        shouldReject = true;
+                    } else if (rarity === 'unique' && rejectUnique) {
+                        shouldReject = true;
+                    } else {
+                        shouldReject = false;
+                        blockLootAccept = true;
+                    }
                 }
 
                 if (shouldReject) {
@@ -5679,27 +5713,34 @@
                 artefact: GM_getValue('highlightColorArtefact', '#f5291b')
             };
 
+            const t = Math.max(0, GM_getValue('highlightBorderThickness', 1));
+            const b = Math.max(0, GM_getValue('highlightBlurInner', 0));
+
             style.innerHTML = `
                 [data-item].item.heroic, [data-item].loot.heroic, .item.heroic, .loot[data-item*='"rarity":"heroic"'] {
-                    box-shadow: inset 0 0 0 1px ${colors.heroic}, 0 0 1px 0px ${colors.heroic} !important;
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.heroic}, 0 0 1px 0px ${colors.heroic} !important;
                 }
                 [data-item].item.unique, [data-item].loot.unique, .item.unique, .loot[data-item*='"rarity":"unique"'] {
-                    box-shadow: inset 0 0 0 1px ${colors.unique}, 0 0 1px 0px ${colors.unique} !important;
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.unique}, 0 0 1px 0px ${colors.unique} !important;
                 }
                 [data-item].item.legendary, [data-item].loot.legendary, .item.legendary, .loot[data-item*='"rarity":"legendary"'], .loot[data-item*='"legendaryBow":1'] {
-                    box-shadow: inset 0 0 0 1px ${colors.legendary}, 0 0 4px 0px ${colors.legendary} !important;
-                    animation: artefact-pulse 12s infinite;
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.legendary}, 0 0 4px 0px ${colors.legendary} !important;
+                    animation: legendary-pulse 12s infinite;
                 }
                 [data-item].item.upgraded, [data-item].loot.upgraded, .item.upgraded, .loot[data-item*='"upgraded":1'] {
-                    box-shadow: inset 0 0 0 1px ${colors.upgraded}, 0 0 1px 0px ${colors.upgraded} !important;
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.upgraded}, 0 0 1px 0px ${colors.upgraded} !important;
                 }
                 [data-item].item.artefact, [data-item].loot.artefact, .item.artefact, .loot[data-item*='"rarity":"artefact"'] {
-                    box-shadow: inset 0 0 0 1px ${colors.artefact}, 0 0 6px 0px ${colors.artefact} !important;
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.artefact}, 0 0 6px 0px ${colors.artefact} !important;
                     animation: artefact-pulse 12s infinite;
                 }
+                @keyframes legendary-pulse {
+                    0%, 100% { box-shadow: inset 0 0 ${b * 2}px ${t * 4}px ${colors.legendary}, 0 0 12px 2px ${colors.legendary}; }
+                    50% { box-shadow: inset 0 0 ${b * 2}px ${t * 3}px ${colors.legendary}, 0 0 20px 4px ${colors.legendary}; }
+                }
                 @keyframes artefact-pulse {
-                    0%, 100% { box-shadow: inset 0 0 0 6px ${colors.artefact}, 0 0 12px 2px ${colors.artefact}; }
-                    50% { box-shadow: inset 0 0 0 4px ${colors.artefact}, 0 0 20px 4px ${colors.artefact}; }
+                    0%, 100% { box-shadow: inset 0 0 ${b * 2}px ${t * 6}px ${colors.artefact}, 0 0 12px 2px ${colors.artefact}; }
+                    50% { box-shadow: inset 0 0 ${b * 2}px ${t * 4}px ${colors.artefact}, 0 0 20px 4px ${colors.artefact}; }
                 }`;
             document.head.appendChild(style);
         },
@@ -6148,7 +6189,8 @@
         init() {
             document.addEventListener('keydown', (e) => {
                 if (!GM_getValue('autoSellerEnabled', true)) return;
-                if (e.key === 'o') this.moveItems();
+                const hotKey = (GM_getValue('sellHotKey', 'o') || 'o').toLowerCase();
+                if (e.key.toLowerCase() === hotKey) this.moveItems();
             });
         },
 
@@ -6156,6 +6198,11 @@
             if (!GM_getValue('autoSellerDisabled', false)) return;
             const sellRarityItems = GM_getValue('sellRarityItems', false);
             const sellConsumables = GM_getValue('sellConsumablesItems', false);
+            const sellUnique = GM_getValue('selluniqueItems', false);
+            const sellHeroic = GM_getValue('sellheroicItems', false);
+            const sellPotions = GM_getValue('sellPotionsItems', false);
+            const sellTp = GM_getValue('sellTpItems', false);
+            const sellAll = GM_getValue('sellAllItems', false);
             const items = document.querySelectorAll('#bag .items .item');
 
             for (let item of items) {
@@ -6163,17 +6210,41 @@
                 if (!data) continue;
 
                 const itemName = data.schema?.inner?.name || 'nieznany przedmiot';
+                const rarity = data.schema?.inner?.rarity?.toLowerCase();
                 const isConsumable = data.schema?.inner?.category === 'consumable';
-                const isCommon = data.schema?.inner?.rarity === 'common';
+                const isCommon = rarity === 'common';
+                const isHeroic = rarity === 'heroic';
+                const isUnique = rarity === 'unique';
                 const isKey = data.schema?.inner?.category === 'keys';
                 const isQuest = data.schema?.inner?.category === 'quests';
+                const isTeleport = Array.isArray(data.schema?.inner?.attributes?.teleportTo);
+                const isPotion = isConsumable && !isTeleport;
+                const isScroll = isConsumable && isTeleport;
 
-                const rarity = data.schema?.inner?.rarity;
                 const color = this.RARITY_SHOP_COLORS[rarity] || '#888888';
 
-                if (!isCommon && !sellRarityItems) continue;
-                if (isConsumable && !sellConsumables) continue;
+                // Never sell keys or quest items
                 if (isKey || isQuest) continue;
+
+                let shouldSell = false;
+
+                if (sellAll) {
+                    shouldSell = true;
+                } else if (isPotion) {
+                    shouldSell = sellPotions || sellConsumables;
+                } else if (isScroll) {
+                    shouldSell = sellTp || sellConsumables;
+                } else if (isCommon) {
+                    shouldSell = true;
+                } else if (isHeroic) {
+                    shouldSell = sellHeroic || sellRarityItems;
+                } else if (isUnique) {
+                    shouldSell = sellUnique || sellRarityItems;
+                } else {
+                    shouldSell = sellRarityItems;
+                }
+
+                if (!shouldSell) continue;
 
                 const shopGrid = document.querySelector('.shop__store');
                 if (shopGrid) {
@@ -6225,6 +6296,8 @@
          title: 'Highlights', desc: 'Dodaje obramowania do przedmiotów w zależności od ich rzadkości.',
          onToggle: (e) => Highlights.toggle(e),
          settings: [
+             { key: 'highlightBorderThickness', label: 'Grubość obramowania (px)', type: 'number', default: 1, onChange: () => Highlights.addStyles() },
+             { key: 'highlightBlurInner', label: 'Rozmycie wewnętrzne (px)', type: 'number', default: 0, onChange: () => Highlights.addStyles() },
              { key: 'highlightColorUnique', label: 'Kolor obramowania Unikatowy', type: 'color', default: '#f5b536' },
              { key: 'highlightColorHeroic', label: 'Kolor obramowania Heroiczny', type: 'color', default: '#3193f5' },
              { key: 'highlightColorUpgraded', label: 'Kolor obramowania Ulepszony', type: 'color', default: '#ebe7ba' },
@@ -6947,7 +7020,10 @@
                     input.style.borderColor = '#1a4d0d';
                     input.style.background = '#10240a';
                 });
-                input.addEventListener('change', () => GM_setValue(setting.key, parseInt(input.value)));
+                input.addEventListener('change', () => {
+                    GM_setValue(setting.key, parseInt(input.value));
+                    if (setting.onChange) setting.onChange();
+                });
                 wrapper.appendChild(labelEl);
                 wrapper.appendChild(input);
             }
