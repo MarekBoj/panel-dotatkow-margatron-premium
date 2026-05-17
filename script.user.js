@@ -2326,8 +2326,11 @@
                 }
 
                 if (!isCommon) {
-                    shouldReject = false;
-                    blockLootAccept = true;
+                    const acceptThisRarity = GM_getValue('autoLoot_' + (rarity || ''), true);
+                    if (acceptThisRarity) {
+                        shouldReject = false;
+                        blockLootAccept = true;
+                    }
                 }
 
                 if (shouldReject) {
@@ -5617,27 +5620,34 @@
                 artefact: GM_getValue('highlightColorArtefact', '#f5291b')
             };
 
+            const t = Math.max(0, GM_getValue('highlightBorderThickness', 1));
+            const b = Math.max(0, GM_getValue('highlightBlurInner', 0));
+
             style.innerHTML = `
                 [data-item].item.heroic, [data-item].loot.heroic, .loot[data-item*='"rarity":"heroic"'] {
-                    box-shadow: inset 0 0 0 1px ${colors.heroic}, 0 0 1px 0px ${colors.heroic} !important;
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.heroic}, 0 0 1px 0px ${colors.heroic} !important;
                 }
                 [data-item].item.unique, [data-item].loot.unique, .item.unique, .loot[data-item*='"rarity":"unique"'] {
-                    box-shadow: inset 0 0 0 1px ${colors.unique}, 0 0 1px 0px ${colors.unique} !important;
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.unique}, 0 0 1px 0px ${colors.unique} !important;
                 }
                 [data-item].item.legendary, [data-item].loot.legendary, .loot[data-item*='"rarity":"legendary"'], .loot[data-item*='"legendaryBow":1'] {
-                    box-shadow: inset 0 0 0 1px ${colors.legendary}, 0 0 4px 0px ${colors.legendary} !important;
-                    animation: artefact-pulse 12s infinite;
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.legendary}, 0 0 4px 0px ${colors.legendary} !important;
+                    animation: legendary-pulse 12s infinite;
                 }
                 [data-item].item.upgraded, [data-item].loot.upgraded, .loot[data-item*='"upgraded":1'] {
-                    box-shadow: inset 0 0 0 1px ${colors.upgraded}, 0 0 1px 0px ${colors.upgraded} !important;
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.upgraded}, 0 0 1px 0px ${colors.upgraded} !important;
                 }
                 [data-item].item.artefact, [data-item].loot.artefact, .loot[data-item*='"rarity":"artefact"'] {
-                    box-shadow: inset 0 0 0 1px ${colors.artefact}, 0 0 6px 0px ${colors.artefact} !important;
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.artefact}, 0 0 6px 0px ${colors.artefact} !important;
                     animation: artefact-pulse 12s infinite;
                 }
+                @keyframes legendary-pulse {
+                    0%, 100% { box-shadow: inset 0 0 ${b * 2}px ${t * 4}px ${colors.legendary}, 0 0 12px 2px ${colors.legendary}; }
+                    50% { box-shadow: inset 0 0 ${b * 2}px ${t * 3}px ${colors.legendary}, 0 0 20px 4px ${colors.legendary}; }
+                }
                 @keyframes artefact-pulse {
-                    0%, 100% { box-shadow: inset 0 0 0 6px ${colors.artefact}, 0 0 12px 2px ${colors.artefact}; }
-                    50% { box-shadow: inset 0 0 0 4px ${colors.artefact}, 0 0 20px 4px ${colors.artefact}; }
+                    0%, 100% { box-shadow: inset 0 0 ${b * 2}px ${t * 6}px ${colors.artefact}, 0 0 12px 2px ${colors.artefact}; }
+                    50% { box-shadow: inset 0 0 ${b * 2}px ${t * 4}px ${colors.artefact}, 0 0 20px 4px ${colors.artefact}; }
                 }`;
             document.head.appendChild(style);
         },
@@ -6053,6 +6063,11 @@
             if (!GM_getValue('autoSellerDisabled', false)) return;
             const sellRarityItems = GM_getValue('sellRarityItems', false);
             const sellConsumables = GM_getValue('sellConsumablesItems', false);
+            const sellHeroic = GM_getValue('sellHeroicItems', false);
+            const sellUnique = GM_getValue('sellUniqueItems', false);
+            const sellUpgraded = GM_getValue('sellUpgradedItems', false);
+            const sellLegendary = GM_getValue('sellLegendaryItems', false);
+            const sellArtefact = GM_getValue('sellArtefactItems', false);
             const items = document.querySelectorAll('#bag .items .item');
 
             for (let item of items) {
@@ -6060,12 +6075,26 @@
                 if (!data) continue;
 
                 const itemName = data.schema?.inner?.name || 'nieznany przedmiot';
+                const rarity = data.schema?.inner?.rarity?.toLowerCase();
                 const isConsumable = data.schema?.inner?.category === 'consumable';
-                const isCommon = data.schema?.inner?.rarity === 'common';
+                const isCommon = rarity === 'common';
+                const isHeroic = rarity === 'heroic';
+                const isUnique = rarity === 'unique';
+                const isUpgraded = rarity === 'upgraded';
+                const isLegendary = rarity === 'legendary';
+                const isArtefact = rarity === 'artefact';
                 const isKey = data.schema?.inner?.category === 'keys';
                 const isQuest = data.schema?.inner?.category === 'quests';
 
-                if (!isCommon && !sellRarityItems) continue;
+                if (!isCommon) {
+                    const allowedByPerRarity =
+                        (isHeroic && sellHeroic) ||
+                        (isUnique && sellUnique) ||
+                        (isUpgraded && sellUpgraded) ||
+                        (isLegendary && sellLegendary) ||
+                        (isArtefact && sellArtefact);
+                    if (!allowedByPerRarity && !sellRarityItems) continue;
+                }
                 if (isConsumable && !sellConsumables) continue;
                 if (isKey || isQuest) continue;
 
@@ -6119,6 +6148,8 @@
          title: 'Highlights', desc: 'Dodaje obramowania do przedmiotów w zależności od ich rzadkości.',
          onToggle: (e) => Highlights.toggle(e),
          settings: [
+             { key: 'highlightBorderThickness', label: 'Grubość obramowania (px)', type: 'number', default: 1, onChange: () => Highlights.addStyles() },
+             { key: 'highlightBlurInner', label: 'Rozmycie wewnętrzne (px)', type: 'number', default: 0, onChange: () => Highlights.addStyles() },
              { key: 'highlightColorUnique', label: 'Kolor obramowania Unikatowy', type: 'color', default: '#f5b536' },
              { key: 'highlightColorHeroic', label: 'Kolor obramowania Heroiczny', type: 'color', default: '#3193f5' },
              { key: 'highlightColorUpgraded', label: 'Kolor obramowania Ulepszony', type: 'color', default: '#ebe7ba' },
@@ -6142,8 +6173,13 @@
          title: 'AutoSeller', desc: 'Sprzedaje automatycznie przedmioty po naciśnięciu "O"',
          onToggle: (e) => AutoSeller.toggle(e),
          settings: [
-             { key: 'sellRarityItems', label: 'Sprzedawaj rzadkie przedmioty', type: 'checkbox', default: false },
-             { key: 'sellConsumablesItems', label: 'Sprzedawaj konsumpcyjne przedmioty', type: 'checkbox', default: false }
+             { key: 'sellRarityItems', label: 'Sprzedawaj wszystkie rzadkie (nadpisuje)', type: 'checkbox', default: false },
+             { key: 'sellConsumablesItems', label: 'Sprzedawaj konsumpcyjne przedmioty', type: 'checkbox', default: false },
+             { key: 'sellHeroicItems', label: 'Sprzedawaj heroiczne', type: 'checkbox', default: false },
+             { key: 'sellUniqueItems', label: 'Sprzedawaj unikatowe', type: 'checkbox', default: false },
+             { key: 'sellUpgradedItems', label: 'Sprzedawaj ulepszone', type: 'checkbox', default: false },
+             { key: 'sellLegendaryItems', label: 'Sprzedawaj legendarne', type: 'checkbox', default: false },
+             { key: 'sellArtefactItems', label: 'Sprzedawaj artefakty', type: 'checkbox', default: false }
          ]},
         {
             id: 'auctionHelperEnabled',
@@ -6239,9 +6275,14 @@
          onToggle: (e) => LootFilter.toggle(e),
          settings: [
              { key: 'autoLootAccept', label: 'Automatyczne potwierdzenie lootu', type: 'checkbox', default: false },
-             { key: 'autoLootMinPrice', label: 'Minimalna wartość przedmiotu', type: 'number', default: 100 },
+             { key: 'autoLootMinPrice', label: 'Minimalna wartość zwykłego przedmiotu', type: 'number', default: 100 },
              { key: 'autoLootRejectCommon', label: 'Zawsze odrzucaj zwykłe przedmioty', type: 'checkbox', default: false },
-             { key: 'autoConsumablesAccept', label: 'Zawsze akceptuj konsumpcyjne', type: 'checkbox', default: false }
+             { key: 'autoConsumablesAccept', label: 'Zawsze akceptuj konsumpcyjne', type: 'checkbox', default: false },
+             { key: 'autoLoot_heroic', label: 'Akceptuj heroiczne', type: 'checkbox', default: true },
+             { key: 'autoLoot_unique', label: 'Akceptuj unikatowe', type: 'checkbox', default: true },
+             { key: 'autoLoot_upgraded', label: 'Akceptuj ulepszone', type: 'checkbox', default: true },
+             { key: 'autoLoot_legendary', label: 'Akceptuj legendarne', type: 'checkbox', default: true },
+             { key: 'autoLoot_artefact', label: 'Akceptuj artefakty', type: 'checkbox', default: true }
          ]}
     ];
 
@@ -6827,7 +6868,10 @@
                     input.style.borderColor = '#1a4d0d';
                     input.style.background = '#10240a';
                 });
-                input.addEventListener('change', () => GM_setValue(setting.key, parseInt(input.value)));
+                input.addEventListener('change', () => {
+                    GM_setValue(setting.key, parseInt(input.value));
+                    if (setting.onChange) setting.onChange();
+                });
                 wrapper.appendChild(labelEl);
                 wrapper.appendChild(input);
             }
