@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.0.0
+// @version      4.8.0
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
+// @match        https://world-legacy.margatron.ovh/*
 // @icon         https://imgur.com/ek1t4dN.png
 // @updateURL    https://raw.githubusercontent.com/MarekBoj/panel-dotatkow-margatron-premium/main/script.user.js
 // @downloadURL  https://raw.githubusercontent.com/MarekBoj/panel-dotatkow-margatron-premium/main/script.user.js
@@ -266,7 +267,7 @@
             { name: 'Henry Kaprawe Oko', lvl: '114', rank: 'ELITE' },
             { name: 'Marid', lvl: '120', rank: 'ELITE' },
             { name: 'Szkielet bosmana', lvl: '130', rank: 'ELITE' },
-            { name: 'Monstrum z Bremus An', lvl: '85', rank: 'ELITE' } 
+            { name: 'Monstrum z Bremus An', lvl: '85', rank: 'ELITE' }
         ],
         API: {
             CHARACTERS: 'https://margatron.ovh/game/api/characters',
@@ -373,24 +374,43 @@
     const MessageCanvas = {
         show(itemName, info, colour) {
             if (!GM_getValue('disableMessages', false)) return;
-
             const message = `${info} ${itemName}`;
             const parent = document.getElementById('game-map-window');
             if (!parent) return;
-
             if (getComputedStyle(parent).position === 'static') {
                 parent.style.position = 'relative';
             }
-
             let messageCanvas = parent.querySelector('.message-canvas');
             if (!messageCanvas) {
                 messageCanvas = this.createContainer();
                 parent.appendChild(messageCanvas);
             }
-
             const canvas = this.createCanvas(message, colour);
             messageCanvas.appendChild(canvas);
+            requestAnimationFrame(() => canvas.style.opacity = '1');
+            setTimeout(() => {
+                canvas.style.opacity = '0';
+                setTimeout(() => {
+                    canvas.remove();
+                    if (messageCanvas.children.length === 0) messageCanvas.remove();
+                }, 300);
+            }, 1500);
+        },
 
+        showItem(itemName, info, colour, itemNameColor) {
+            if (!GM_getValue('disableMessages', false)) return;
+            const parent = document.getElementById('game-map-window');
+            if (!parent) return;
+            if (getComputedStyle(parent).position === 'static') {
+                parent.style.position = 'relative';
+            }
+            let messageCanvas = parent.querySelector('.message-canvas');
+            if (!messageCanvas) {
+                messageCanvas = this.createContainer();
+                parent.appendChild(messageCanvas);
+            }
+            const canvas = this.createCanvasItem(info, itemName, colour, itemNameColor);
+            messageCanvas.appendChild(canvas);
             requestAnimationFrame(() => canvas.style.opacity = '1');
             setTimeout(() => {
                 canvas.style.opacity = '0';
@@ -418,13 +438,11 @@
             const tempCtx = tempCanvas.getContext('2d');
             tempCtx.font = 'bold 20px Georgia';
             const textWidth = tempCtx.measureText(message).width + 40;
-
             const canvas = document.createElement('canvas');
             canvas.width = Math.max(360, textWidth);
             canvas.height = 50;
             canvas.style.opacity = '0';
             canvas.style.transition = 'opacity 0.3s ease';
-
             const ctx = canvas.getContext('2d');
             ctx.font = 'bold 20px Georgia';
             ctx.textAlign = 'center';
@@ -438,6 +456,52 @@
             ctx.strokeText(message, canvas.width / 2, canvas.height / 2);
             ctx.fillStyle = colour;
             ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+            return canvas;
+        },
+
+        createCanvasItem(message, itemName, colour, itemNameColor) {
+            const font = 'bold 20px Georgia';
+            const fullText = `${message} ${itemName}`;
+
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.font = font;
+            const msgWidth = tempCtx.measureText(message + ' ').width;
+            const itemWidth = tempCtx.measureText(itemName).width;
+            const totalWidth = msgWidth + itemWidth + 40;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(360, totalWidth);
+            canvas.height = 50;
+            canvas.style.opacity = '0';
+            canvas.style.transition = 'opacity 0.3s ease';
+
+            const ctx = canvas.getContext('2d');
+            ctx.font = font;
+            ctx.textBaseline = 'middle';
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            const totalTextWidth = msgWidth + itemWidth;
+            const startX = cx - totalTextWidth / 2;
+
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+            ctx.shadowBlur = 5;
+
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1;
+            ctx.textAlign = 'left';
+            ctx.strokeText(fullText, startX, cy);
+
+            ctx.shadowColor = 'transparent';
+            ctx.fillStyle = colour;
+            ctx.fillText(message + ' ', startX, cy);
+
+            ctx.fillStyle = itemNameColor;
+            ctx.fillText(itemName, startX + msgWidth, cy);
 
             return canvas;
         }
@@ -1981,7 +2045,7 @@
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '4px',
-                maxHeight: '142px',
+                maxHeight: '188px',
                 overflowY: 'auto',
                 paddingRight: '4px',
                 scrollbarWidth: 'thin',
@@ -2326,11 +2390,8 @@
                 }
 
                 if (!isCommon) {
-                    const acceptThisRarity = GM_getValue('autoLoot_' + (rarity || ''), true);
-                    if (acceptThisRarity) {
-                        shouldReject = false;
-                        blockLootAccept = true;
-                    }
+                    shouldReject = false;
+                    blockLootAccept = true;
                 }
 
                 if (shouldReject) {
@@ -2432,7 +2493,7 @@
                 const isConsumable = data.schema?.inner?.category === 'consumable';
                 const isInBag = data.schema?.inner?.location === 'BAG';
                 const restoresHealth = data.schema?.inner?.attributes?.restoreHealthPoints > 0 ||
-                      data.schema?.inner?.attributes?.healRemaining > 0;
+                      data.schema?.inner?.attributes?.healRemaining > 0 || data.schema?.inner?.attributes?.healthRestorationPercent > 0;
                 const isTeleport = Array.isArray(data.schema?.inner?.attributes?.teleportTo);
 
                 if (isConsumable && isInBag && restoresHealth && !isTeleport) {
@@ -5399,7 +5460,6 @@
             const deltaY = heroY - playerY;
             const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-            // Oblicz kąt w radianach
             const angle = Math.atan2(deltaY, deltaX);
 
             return {
@@ -5461,7 +5521,6 @@
             const slope = direction.deltaY / direction.deltaX;
 
             if (Math.abs(direction.deltaX) * mapHeight > Math.abs(direction.deltaY) * mapWidth) {
-                // Przecina lewą lub prawą krawędź
                 if (direction.deltaX > 0) {
                     posX = mapWidth - margin;
                     posY = centerY + slope * (posX - centerX);
@@ -5620,34 +5679,27 @@
                 artefact: GM_getValue('highlightColorArtefact', '#f5291b')
             };
 
-            const t = Math.max(0, GM_getValue('highlightBorderThickness', 1));
-            const b = Math.max(0, GM_getValue('highlightBlurInner', 0));
-
             style.innerHTML = `
-                [data-item].item.heroic, [data-item].loot.heroic, .loot[data-item*='"rarity":"heroic"'] {
-                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.heroic}, 0 0 1px 0px ${colors.heroic} !important;
+                [data-item].item.heroic, [data-item].loot.heroic, .item.heroic, .loot[data-item*='"rarity":"heroic"'] {
+                    box-shadow: inset 0 0 0 1px ${colors.heroic}, 0 0 1px 0px ${colors.heroic} !important;
                 }
                 [data-item].item.unique, [data-item].loot.unique, .item.unique, .loot[data-item*='"rarity":"unique"'] {
-                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.unique}, 0 0 1px 0px ${colors.unique} !important;
+                    box-shadow: inset 0 0 0 1px ${colors.unique}, 0 0 1px 0px ${colors.unique} !important;
                 }
-                [data-item].item.legendary, [data-item].loot.legendary, .loot[data-item*='"rarity":"legendary"'], .loot[data-item*='"legendaryBow":1'] {
-                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.legendary}, 0 0 4px 0px ${colors.legendary} !important;
-                    animation: legendary-pulse 12s infinite;
-                }
-                [data-item].item.upgraded, [data-item].loot.upgraded, .loot[data-item*='"upgraded":1'] {
-                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.upgraded}, 0 0 1px 0px ${colors.upgraded} !important;
-                }
-                [data-item].item.artefact, [data-item].loot.artefact, .loot[data-item*='"rarity":"artefact"'] {
-                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.artefact}, 0 0 6px 0px ${colors.artefact} !important;
+                [data-item].item.legendary, [data-item].loot.legendary, .item.legendary, .loot[data-item*='"rarity":"legendary"'], .loot[data-item*='"legendaryBow":1'] {
+                    box-shadow: inset 0 0 0 1px ${colors.legendary}, 0 0 4px 0px ${colors.legendary} !important;
                     animation: artefact-pulse 12s infinite;
                 }
-                @keyframes legendary-pulse {
-                    0%, 100% { box-shadow: inset 0 0 ${b * 2}px ${t * 4}px ${colors.legendary}, 0 0 12px 2px ${colors.legendary}; }
-                    50% { box-shadow: inset 0 0 ${b * 2}px ${t * 3}px ${colors.legendary}, 0 0 20px 4px ${colors.legendary}; }
+                [data-item].item.upgraded, [data-item].loot.upgraded, .item.upgraded, .loot[data-item*='"upgraded":1'] {
+                    box-shadow: inset 0 0 0 1px ${colors.upgraded}, 0 0 1px 0px ${colors.upgraded} !important;
+                }
+                [data-item].item.artefact, [data-item].loot.artefact, .item.artefact, .loot[data-item*='"rarity":"artefact"'] {
+                    box-shadow: inset 0 0 0 1px ${colors.artefact}, 0 0 6px 0px ${colors.artefact} !important;
+                    animation: artefact-pulse 12s infinite;
                 }
                 @keyframes artefact-pulse {
-                    0%, 100% { box-shadow: inset 0 0 ${b * 2}px ${t * 6}px ${colors.artefact}, 0 0 12px 2px ${colors.artefact}; }
-                    50% { box-shadow: inset 0 0 ${b * 2}px ${t * 4}px ${colors.artefact}, 0 0 20px 4px ${colors.artefact}; }
+                    0%, 100% { box-shadow: inset 0 0 0 6px ${colors.artefact}, 0 0 12px 2px ${colors.artefact}; }
+                    50% { box-shadow: inset 0 0 0 4px ${colors.artefact}, 0 0 20px 4px ${colors.artefact}; }
                 }`;
             document.head.appendChild(style);
         },
@@ -5679,84 +5731,116 @@
 
         addStyles() {
             const glowColor = GM_getValue('legendGlowColor', '#a8157d');
+            const artefactGlowColor = GM_getValue('artefactGlowColor', '#f5291b');
             const style = document.createElement("style");
             style.innerHTML = `
                 @keyframes glow-legendary-loot {
-                    0% { box-shadow: 0 0 80px ${glowColor}, 0 0 120px ${glowColor}, 0 0 160px ${glowColor}; }
-                    50% { box-shadow: 0 0 120px ${glowColor}, 0 0 180px ${glowColor}, 0 0 240px ${glowColor}; }
+                    0%   { box-shadow: 0 0 80px ${glowColor}, 0 0 120px ${glowColor}, 0 0 160px ${glowColor}; }
+                    50%  { box-shadow: 0 0 120px ${glowColor}, 0 0 180px ${glowColor}, 0 0 240px ${glowColor}; }
                     100% { box-shadow: 0 0 160px ${glowColor}, 0 0 220px ${glowColor}, 0 0 300px ${glowColor}; }
                 }
                 @keyframes fadeOutLegend {
-                    0% { box-shadow: 0 0 80px ${glowColor}, 0 0 120px ${glowColor}; }
+                    0%   { box-shadow: 0 0 80px ${glowColor}, 0 0 120px ${glowColor}; }
+                    100% { box-shadow: 0 0 10px transparent, 0 0 20px transparent; }
+                }
+                @keyframes glow-artefact-loot {
+                    0%   { box-shadow: 0 0 80px ${artefactGlowColor}, 0 0 120px ${artefactGlowColor}, 0 0 160px ${artefactGlowColor}; }
+                    50%  { box-shadow: 0 0 120px ${artefactGlowColor}, 0 0 180px ${artefactGlowColor}, 0 0 240px ${artefactGlowColor}; }
+                    100% { box-shadow: 0 0 160px ${artefactGlowColor}, 0 0 220px ${artefactGlowColor}, 0 0 300px ${artefactGlowColor}; }
+                }
+                @keyframes fadeOutArtefact {
+                    0%   { box-shadow: 0 0 80px ${artefactGlowColor}, 0 0 120px ${artefactGlowColor}; }
                     100% { box-shadow: 0 0 10px transparent, 0 0 20px transparent; }
                 }
                 .centered-div.glow-legendary-loot,
                 .chat-left-bg.chatleft-absolute.glow-legendary-loot,
                 #loots.glow-legendary-loot {
                     animation: glow-legendary-loot 6s ease-in-out, fadeOutLegend 12s ease-out forwards;
+                }
+                .centered-div.glow-artefact-loot,
+                .chat-left-bg.chatleft-absolute.glow-artefact-loot,
+                #loots.glow-artefact-loot {
+                    animation: glow-artefact-loot 1.5s ease-in-out infinite, fadeOutArtefact 40s ease-out forwards;
+                    animation-iteration-count: infinite, 1;
                 }`;
             document.head.appendChild(style);
+        },
+
+        notify(item, rarity, message, glowClass, audioUrl, glowColor, colorMessage, itemName) {
+            if (item.classList.contains('notify-active')) return;
+            item.classList.add('notify-active');
+            setTimeout(() => item.classList.remove('notify-active'), 40000);
+            MessageCanvas.showItem(itemName, message, '#ffd700', colorMessage);
+            this.triggerConfetti(rarity);
+            if (audioUrl) Utils.playAudio(audioUrl);
+
+            ['.chat-left-bg.chatleft-absolute', '.centered-div', '#loots'].forEach(selector => {
+                const el = document.querySelector(selector);
+                if (el) {
+                    el.classList.add(glowClass);
+                    setTimeout(() => el.classList.remove(glowClass), 40000);
+                }
+            });
         },
 
         check() {
             document.querySelectorAll('[data-item]').forEach(item => {
                 const data = Utils.parseItemData(item);
                 if (!data || !data.schema?.inner || item.closest('#mapfield')) return;
+                if (!item.closest('div.loot')) return;
 
-                const itemId = data.schema.inner.id || JSON.stringify(data.schema.inner);
                 const rarity = data.schema.inner.rarity?.toLowerCase();
+                const itemName = data.schema.inner.name;
+                const audioUrl = GM_getValue('audioUrl', 'https://files.catbox.moe/j6siq2.mp3');
 
-                if (rarity === "heroic" && item.closest('div.loot')) {
-                    if (item.classList.contains('notify-active')) {
-                        return;
-                    }
-
+                if (rarity === "heroic") {
+                    if (item.classList.contains('notify-active')) return;
                     item.classList.add('notify-active');
                     setTimeout(() => item.classList.remove('notify-active'), 40000);
+
                     const color = GM_getValue('highlightColorHeroic', '#00a2ff');
-                    MessageCanvas.show("", "Zdobyłeś Przedmiot Heroiczny", color);
-                    this.triggerConfetti();
+                    MessageCanvas.showItem(itemName, 'Zdobyłeś: ', '#ffd700', color);
+                    this.triggerConfetti(rarity);
                 }
 
-                if (rarity === "legendary" && item.closest('div.loot')) {
-                    if (item.classList.contains('notify-active')) {
-                        return;
-                    }
-
-                    item.classList.add('notify-active');
-                    const audioUrl = GM_getValue('audioUrl', 'https://files.catbox.moe/j6siq2.mp3');
+                if (rarity === "legendary") {
                     const color = GM_getValue('legendGlowColor', '#a8157d');
-                    MessageCanvas.show("", "Zdobyłeś Przedmiot Legendarny!!", color);
-                    this.triggerConfetti();
-                    Utils.playAudio(audioUrl);
+                    const colorMessage = GM_getValue('highlightColorLegendary', '#d1249e');
+                    this.notify(item, rarity, "Zdobyłeś: ", 'glow-legendary-loot', audioUrl, color, colorMessage, itemName);
+                }
 
-                    ['.chat-left-bg.chatleft-absolute', '.centered-div', '#loots'].forEach(selector => {
-                        const el = document.querySelector(selector);
-                        if (el) {
-                            el.classList.add('glow-legendary-loot');
-                            setTimeout(() => item.classList.remove('notify-active'), 40000);
-                            setTimeout(() => el.classList.remove('glow-legendary-loot'), 40000);
-                        }
-                    });
+                if (rarity === "artefact") {
+                    const color = GM_getValue('artefactGlowColor', '#f5291b');
+                    const colorMessage = GM_getValue('highlightColorArtefact', '#f5291b');
+                    this.notify(item, rarity, "Zdobyłeś: ", 'glow-artefact-loot', audioUrl, color, colorMessage, itemName);
                 }
             });
         },
 
-        triggerConfetti() {
+        triggerConfetti(rarity) {
             if (typeof confetti === 'undefined') return;
 
-            const duration = 3000;
+            const isArtefact = rarity === "artefact";
+            const duration = isArtefact ? 3000 : 1500;
             const animationEnd = Date.now() + duration;
-            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+            const defaults = isArtefact
+            ? { startVelocity: 45, spread: 360, ticks: 120, zIndex: 9999,
+               colors: [GM_getValue('artefactGlowColor', '#f5291b'), '#ff8800', '#ffdd00', '#ffffff'] }
+            : { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
             const randomInRange = (min, max) => Math.random() * (max - min) + min;
 
             const interval = setInterval(() => {
                 const timeLeft = animationEnd - Date.now();
                 if (timeLeft <= 0) return clearInterval(interval);
 
-                const particleCount = 50 * (timeLeft / duration);
+                const particleCount = (isArtefact ? 80 : 50) * (timeLeft / duration);
                 confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
                 confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
+                if (isArtefact) {
+                    confetti({ ...defaults, particleCount: 20, origin: { x: 0.5, y: 0.5 },
+                              startVelocity: 60, ticks: 80, shapes: ['star'] });
+                }
             }, 250);
         }
     };
@@ -6052,6 +6136,15 @@
             GM_setValue('autoSellerEnabled', enabled);
         },
 
+       RARITY_SHOP_COLORS: {
+            'unique': GM_getValue('highlightColorUnique', '#f5b536'),
+            'heroic': GM_getValue('highlightColorHeroic', '#3193f5'),
+            'upgraded': GM_getValue('highlightColorUpgraded', '#ebe7ba'),
+            'legendary': GM_getValue('highlightColorLegendary', '#d1249e'),
+            'artefact': GM_getValue('highlightColorArtefact', '#f5291b'),
+            'common': '#ffffff'
+        },
+
         init() {
             document.addEventListener('keydown', (e) => {
                 if (!GM_getValue('autoSellerEnabled', true)) return;
@@ -6063,11 +6156,6 @@
             if (!GM_getValue('autoSellerDisabled', false)) return;
             const sellRarityItems = GM_getValue('sellRarityItems', false);
             const sellConsumables = GM_getValue('sellConsumablesItems', false);
-            const sellHeroic = GM_getValue('sellHeroicItems', false);
-            const sellUnique = GM_getValue('sellUniqueItems', false);
-            const sellUpgraded = GM_getValue('sellUpgradedItems', false);
-            const sellLegendary = GM_getValue('sellLegendaryItems', false);
-            const sellArtefact = GM_getValue('sellArtefactItems', false);
             const items = document.querySelectorAll('#bag .items .item');
 
             for (let item of items) {
@@ -6075,33 +6163,22 @@
                 if (!data) continue;
 
                 const itemName = data.schema?.inner?.name || 'nieznany przedmiot';
-                const rarity = data.schema?.inner?.rarity?.toLowerCase();
                 const isConsumable = data.schema?.inner?.category === 'consumable';
-                const isCommon = rarity === 'common';
-                const isHeroic = rarity === 'heroic';
-                const isUnique = rarity === 'unique';
-                const isUpgraded = rarity === 'upgraded';
-                const isLegendary = rarity === 'legendary';
-                const isArtefact = rarity === 'artefact';
+                const isCommon = data.schema?.inner?.rarity === 'common';
                 const isKey = data.schema?.inner?.category === 'keys';
                 const isQuest = data.schema?.inner?.category === 'quests';
 
-                if (!isCommon) {
-                    const allowedByPerRarity =
-                        (isHeroic && sellHeroic) ||
-                        (isUnique && sellUnique) ||
-                        (isUpgraded && sellUpgraded) ||
-                        (isLegendary && sellLegendary) ||
-                        (isArtefact && sellArtefact);
-                    if (!allowedByPerRarity && !sellRarityItems) continue;
-                }
+                const rarity = data.schema?.inner?.rarity;
+                const color = this.RARITY_SHOP_COLORS[rarity] || '#888888';
+
+                if (!isCommon && !sellRarityItems) continue;
                 if (isConsumable && !sellConsumables) continue;
                 if (isKey || isQuest) continue;
 
                 const shopGrid = document.querySelector('.shop__store');
                 if (shopGrid) {
                     Utils.moveItemToRandomPosition(item, shopGrid);
-                    MessageCanvas.show(itemName, "Sprzedałeś: ", '#ffd700');
+                    MessageCanvas.showItem(itemName, "Sprzedałeś: ", '#ffd700', color);
                     break;
                 }
             }
@@ -6148,8 +6225,6 @@
          title: 'Highlights', desc: 'Dodaje obramowania do przedmiotów w zależności od ich rzadkości.',
          onToggle: (e) => Highlights.toggle(e),
          settings: [
-             { key: 'highlightBorderThickness', label: 'Grubość obramowania (px)', type: 'number', default: 1, onChange: () => Highlights.addStyles() },
-             { key: 'highlightBlurInner', label: 'Rozmycie wewnętrzne (px)', type: 'number', default: 0, onChange: () => Highlights.addStyles() },
              { key: 'highlightColorUnique', label: 'Kolor obramowania Unikatowy', type: 'color', default: '#f5b536' },
              { key: 'highlightColorHeroic', label: 'Kolor obramowania Heroiczny', type: 'color', default: '#3193f5' },
              { key: 'highlightColorUpgraded', label: 'Kolor obramowania Ulepszony', type: 'color', default: '#ebe7ba' },
@@ -6166,20 +6241,22 @@
          title: 'LegendNotificator', desc: 'Efekt wizualny przy zdobyciu przedmiotu legendarnego.',
          onToggle: (e) => LegendNotification.toggle(e),
          settings: [
-             { key: 'legendGlowColor', label: 'Kolor animacji okna łupów', type: 'color', default: '#a8157d' },
+             { key: 'legendGlowColor', label: 'Kolor animacji okna łupów w przypadku legendy', type: 'color', default: '#a8157d' },
+             { key: 'artefactGlowColor', label: 'Kolor animacji okna łupów w przypadku artefaktu', type: 'color', default: '#f5291b' },
              { key: 'audioUrl', label: 'Dźwięk powiadomienia o legendzie', type: 'text', default: 'https://files.catbox.moe/j6siq2.mp3' }
          ]},
         { id: 'autoSellerEnabled', default: false, icon: 'https://i.imgur.com/cJrAlUI.png',
          title: 'AutoSeller', desc: 'Sprzedaje automatycznie przedmioty po naciśnięciu "O"',
          onToggle: (e) => AutoSeller.toggle(e),
          settings: [
-             { key: 'sellRarityItems', label: 'Sprzedawaj wszystkie rzadkie (nadpisuje)', type: 'checkbox', default: false },
-             { key: 'sellConsumablesItems', label: 'Sprzedawaj konsumpcyjne przedmioty', type: 'checkbox', default: false },
-             { key: 'sellHeroicItems', label: 'Sprzedawaj heroiczne', type: 'checkbox', default: false },
-             { key: 'sellUniqueItems', label: 'Sprzedawaj unikatowe', type: 'checkbox', default: false },
-             { key: 'sellUpgradedItems', label: 'Sprzedawaj ulepszone', type: 'checkbox', default: false },
-             { key: 'sellLegendaryItems', label: 'Sprzedawaj legendarne', type: 'checkbox', default: false },
-             { key: 'sellArtefactItems', label: 'Sprzedawaj artefakty', type: 'checkbox', default: false }
+             { key: 'sellHotKey', label: 'Przycisk odpowiedzialny za sprzedawanie', type: 'text', default: 'O' },
+             { key: 'selluniqueItems', label: 'Sprzedawaj Unikaty', type: 'checkbox', default: false },
+             { key: 'sellheroicItems', label: 'Sprzedawaj Heroiki', type: 'checkbox', default: false },
+             { key: 'sellRarityItems', label: 'Sprzedawaj każdy typ rzadkiego przedmiotu', type: 'checkbox', default: false },
+             { key: 'sellPotionsItems', label: 'Sprzedawaj mikstury', type: 'checkbox', default: false },
+             { key: 'sellTpItems', label: 'Sprzedawaj zwoje', type: 'checkbox', default: false },
+             { key: 'sellAllItems', label: 'Sprzedawaj wszystko', type: 'checkbox', default: false },
+             { key: 'sellConsumablesItems', label: 'Sprzedawaj każdy typ konsumpcyjnych przedmiotów', type: 'checkbox', default: false }
          ]},
         {
             id: 'auctionHelperEnabled',
@@ -6275,14 +6352,16 @@
          onToggle: (e) => LootFilter.toggle(e),
          settings: [
              { key: 'autoLootAccept', label: 'Automatyczne potwierdzenie lootu', type: 'checkbox', default: false },
-             { key: 'autoLootMinPrice', label: 'Minimalna wartość zwykłego przedmiotu', type: 'number', default: 100 },
+             { key: 'autoLootMinPrice', label: 'Minimalna wartość przedmiotu', type: 'number', default: 100 },
              { key: 'autoLootRejectCommon', label: 'Zawsze odrzucaj zwykłe przedmioty', type: 'checkbox', default: false },
-             { key: 'autoConsumablesAccept', label: 'Zawsze akceptuj konsumpcyjne', type: 'checkbox', default: false },
-             { key: 'autoLoot_heroic', label: 'Akceptuj heroiczne', type: 'checkbox', default: true },
-             { key: 'autoLoot_unique', label: 'Akceptuj unikatowe', type: 'checkbox', default: true },
-             { key: 'autoLoot_upgraded', label: 'Akceptuj ulepszone', type: 'checkbox', default: true },
-             { key: 'autoLoot_legendary', label: 'Akceptuj legendarne', type: 'checkbox', default: true },
-             { key: 'autoLoot_artefact', label: 'Akceptuj artefakty', type: 'checkbox', default: true }
+             { key: 'autoLootRejectUnique', label: 'Zawsze odrzucaj unikalne przedmioty', type: 'checkbox', default: false },
+             { key: 'autoLootRejectHeroic', label: 'Zawsze odrzucaj heroiczne przedmioty', type: 'checkbox', default: false },
+             { key: 'autoLootRejectAll', label: 'Zawsze odrzucaj wszystkie przedmioty', type: 'checkbox', default: false },
+             { key: 'autoConsumablesAccept', label: 'Zawsze akceptuj mikstury', type: 'checkbox', default: false },
+             { key: 'autoTpAccept', label: 'Zawsze akceptuj zwoje', type: 'checkbox', default: false },
+             { key: 'autoNeutralAccept', label: 'Zawsze akceptuj neutralne przedmioty', type: 'checkbox', default: false },
+             { key: 'autoArrowsAccept', label: 'Zawsze akceptuj strzały', type: 'checkbox', default: false },
+             { key: 'autoKeysAccept', label: 'Zawsze akceptuj klucze', type: 'checkbox', default: false }
          ]}
     ];
 
@@ -6868,10 +6947,7 @@
                     input.style.borderColor = '#1a4d0d';
                     input.style.background = '#10240a';
                 });
-                input.addEventListener('change', () => {
-                    GM_setValue(setting.key, parseInt(input.value));
-                    if (setting.onChange) setting.onChange();
-                });
+                input.addEventListener('change', () => GM_setValue(setting.key, parseInt(input.value)));
                 wrapper.appendChild(labelEl);
                 wrapper.appendChild(input);
             }
