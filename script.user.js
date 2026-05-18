@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.0.0
+// @version      5.0.1
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -2339,6 +2339,7 @@
     };
 
     // ======================== LOOT FILTER ========================
+    let blockLootAccept;
     const LootFilter = {
         toggle(enabled) {
             GM_setValue('autoLootEnabled', enabled);
@@ -2355,7 +2356,6 @@
 
             const acceptLoot = GM_getValue('autoLootAccept', false);
             const minPrice = GM_getValue('autoLootMinPrice', 10);
-            const lootFiltered = GM_getValue('lootFilterApply', false);
             const rejectCommon = GM_getValue('autoLootRejectCommon', false);
             const rejectUnique = GM_getValue('autoLootRejectUnique', false);
             const rejectHeroic = GM_getValue('autoLootRejectHeroic', false);
@@ -2365,18 +2365,17 @@
             const acceptNeutral = GM_getValue('autoNeutralAccept', false);
             const acceptArrows = GM_getValue('autoArrowsAccept', false);
             const acceptKeys = GM_getValue('autoKeysAccept', false);
+            const acceptAlways = GM_getValue('allKeysAccept', false);
             const lootWrappers = document.querySelectorAll('.loot-wrapper');
-
             if (lootWrappers.length === 0) {
                 GM_setValue('lootFilterApply', false);
+                blockLootAccept = false;
                 return;
             }
 
-            let blockLootAccept = false;
-
             lootWrappers.forEach(wrapper => {
                 const item = wrapper.querySelector('[data-item]');
-                if (!item || lootFiltered || !item.closest('#loots')) return;
+                if (!item || !item.closest('#loots')) return;
 
                 const data = Utils.parseItemData(item);
                 if (!data) return;
@@ -2390,17 +2389,52 @@
                 const isConsumable = type === "consumable";
                 const isGold = type === "golds";
                 const isKey = type === "keys";
+                const isNeutral = type == "neutral";
                 const isArrow = type === "arrows";
                 const isPotion = isConsumable && !isTeleport;
                 const isScroll = isConsumable && isTeleport;
 
-                // rejectAll overrides everything
                 if (rejectAll) {
                     wrapper.querySelector('b.no')?.click();
                     return;
                 }
 
                 let shouldReject = true;
+                if (rarity === 'heroic') {
+                    shouldReject = false;
+                    blockLootAccept = true;
+
+                } else if (rarity === 'unique') {
+                    shouldReject = false;
+                    blockLootAccept = true;
+
+                } else if (rarity === 'legendary') {
+                    shouldReject = false;
+                    blockLootAccept = true;
+
+                } else if (rarity === 'artefact') {
+                    shouldReject = false;
+                    blockLootAccept = true;
+
+                } else if (rarity === 'upgraded') {
+                    shouldReject = false
+                    blockLootAccept = true;
+                }
+
+
+                if (rarity === 'heroic' && rejectHeroic) {
+                    shouldReject = true;
+                } else if (rarity === 'unique' && rejectUnique) {
+                    shouldReject = true;
+                }
+
+                if (price > minPrice) {
+                    shouldReject = false;
+                }
+
+                if (isCommon && rejectCommon) {
+                    shouldReject = true;
+                }
 
                 if (isGold) {
                     shouldReject = false;
@@ -2412,34 +2446,23 @@
                     if (acceptConsumables) shouldReject = false;
                 } else if (isScroll) {
                     if (acceptTp) shouldReject = false;
-                } else if (isCommon) {
-                    if (!rejectCommon && price > minPrice) shouldReject = false;
-                } else if (!rarity || rarity === 'neutral') {
-                    if (acceptNeutral) shouldReject = false;
-                } else {
-                    // Non-common rarities
-                    if (rarity === 'heroic' && rejectHeroic) {
-                        shouldReject = true;
-                    } else if (rarity === 'unique' && rejectUnique) {
-                        shouldReject = true;
-                    } else {
-                        shouldReject = false;
-                        blockLootAccept = true;
-                    }
+                } else if (isNeutral && acceptNeutral) {
+                    shouldReject = false;
                 }
 
-                if (shouldReject) {
+
+                if (shouldReject && !GM_getValue('lootFilterApply')) {
                     wrapper.querySelector('b.no')?.click();
                 }
             });
 
             GM_setValue('lootFilterApply', true);
             const lootButton = document.querySelector('#loots_button');
-
             if (lootButton && acceptLoot && !blockLootAccept) {
                 setTimeout(() => lootButton.click(), 50);
                 GM_setValue('lootFilterApply', false);
-            } else if (blockLootAccept) {
+            } else if (acceptAlways){
+                setTimeout(() => lootButton.click(), 50);
                 GM_setValue('lootFilterApply', false);
             }
         }
@@ -5026,10 +5049,10 @@
         detectedHeroes: new Set(),
         detectedTitans: new Set(),
         checkInterval: null,
-        activeHeroes: [], // przechowuje aktywnych herosów z koordynatami
-        arrowElements: [], // elementy strzałek na mapie
-        locationObserver: null, // obserwator zmian pozycji gracza
-        lastLocationId: null, // ID ostatniej lokacji (do wykrywania zmiany lokacji)
+        activeHeroes: [],
+        arrowElements: [],
+        locationObserver: null,
+        lastLocationId: null,
 
         HEROES_QUERY: `
         query HeroesOnMap {
@@ -5086,7 +5109,6 @@
         },
 
         setupLocationObserver() {
-            // Obserwuj zmiany w pozycji gracza, aby aktualizować strzałki
             const locationDiv = document.querySelector('.location');
             if (!locationDiv) {
                 setTimeout(() => this.setupLocationObserver(), 1000);
@@ -5122,7 +5144,6 @@
                 const location = data.location;
                 const npcs = data.npcs || [];
 
-                // Resetuj wykryte herosi przy zmianie lokacji
                 if (this.lastLocationId && this.lastLocationId !== location.id) {
                     console.log('[HeroDetector] Zmiana lokacji - reset wykrytych herosów');
                     this.detectedHeroes.clear();
@@ -5132,7 +5153,7 @@
                 this.lastLocationId = location.id;
 
                 let foundEntities = [];
-                let currentHeroes = []; // wszyscy aktualnie obecni herosi/tytani
+                let currentHeroes = [];
 
                 npcs.forEach(npc => {
                     const rank = npc.rank?.toUpperCase();
@@ -5178,10 +5199,8 @@
                     }
                 });
 
-                // Zaktualizuj listę aktywnych herosów
                 this.activeHeroes = currentHeroes;
 
-                // Zaktualizuj strzałki (tylko jeśli są jakieś herosi)
                 if (currentHeroes.length > 0) {
                     this.updateArrows();
                 } else {
@@ -6177,7 +6196,7 @@
             GM_setValue('autoSellerEnabled', enabled);
         },
 
-       RARITY_SHOP_COLORS: {
+        RARITY_SHOP_COLORS: {
             'unique': GM_getValue('highlightColorUnique', '#f5b536'),
             'heroic': GM_getValue('highlightColorHeroic', '#3193f5'),
             'upgraded': GM_getValue('highlightColorUpgraded', '#ebe7ba'),
@@ -6425,6 +6444,7 @@
          onToggle: (e) => LootFilter.toggle(e),
          settings: [
              { key: 'autoLootAccept', label: 'Automatyczne potwierdzenie lootu', type: 'checkbox', default: false },
+             { key: 'allKeysAccept', label: 'Automatycznie potwierdzaj wszystko', type: 'checkbox', default: false },
              { key: 'autoLootMinPrice', label: 'Minimalna wartość przedmiotu', type: 'number', default: 100 },
              { key: 'autoLootRejectCommon', label: 'Zawsze odrzucaj zwykłe przedmioty', type: 'checkbox', default: false },
              { key: 'autoLootRejectUnique', label: 'Zawsze odrzucaj unikalne przedmioty', type: 'checkbox', default: false },
@@ -6434,7 +6454,7 @@
              { key: 'autoTpAccept', label: 'Zawsze akceptuj zwoje', type: 'checkbox', default: false },
              { key: 'autoNeutralAccept', label: 'Zawsze akceptuj neutralne przedmioty', type: 'checkbox', default: false },
              { key: 'autoArrowsAccept', label: 'Zawsze akceptuj strzały', type: 'checkbox', default: false },
-             { key: 'autoKeysAccept', label: 'Zawsze akceptuj klucze', type: 'checkbox', default: false }
+             { key: 'autoKeysAccept', label: 'Zawsze akceptuj klucze', type: 'checkbox', default: false },
          ]}
     ];
 
