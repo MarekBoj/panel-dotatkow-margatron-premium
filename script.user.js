@@ -2365,6 +2365,8 @@
             const acceptNeutral = GM_getValue('autoNeutralAccept', false);
             const acceptArrows = GM_getValue('autoArrowsAccept', false);
             const acceptKeys = GM_getValue('autoKeysAccept', false);
+            const rejectGold = GM_getValue('autoLootRejectGold', false);
+            const rejectBag = GM_getValue('autoLootRejectBag', false);
             const acceptAlways = GM_getValue('allKeysAccept', false);
             const lootWrappers = document.querySelectorAll('.loot-wrapper');
             if (lootWrappers.length === 0) {
@@ -2389,6 +2391,7 @@
                 const isConsumable = type === "consumable";
                 const isGold = type === "golds";
                 const isKey = type === "keys";
+                const isBag = type === "bag" || type === "bags";
                 const isNeutral = type == "neutral";
                 const isArrow = type === "arrows";
                 const isPotion = isConsumable && !isTeleport;
@@ -2437,7 +2440,9 @@
                 }
 
                 if (isGold) {
-                    shouldReject = false;
+                    shouldReject = rejectGold;
+                } else if (isBag) {
+                    shouldReject = rejectBag;
                 } else if (isKey) {
                     if (acceptKeys) shouldReject = false;
                 } else if (isArrow) {
@@ -5721,9 +5726,18 @@
 
         addStyles() {
             this.removeStyles();
+            const mode = GM_getValue('highlightFrameMode', 'color');
             const style = document.createElement("style");
             style.id = "highlight-items-styles";
+            if (mode === 'image') {
+                this.buildImageFrameCSS(style);
+            } else {
+                this.buildColorBorderCSS(style);
+            }
+            document.head.appendChild(style);
+        },
 
+        buildColorBorderCSS(style) {
             const colors = {
                 unique: GM_getValue('highlightColorUnique', '#f5b536'),
                 heroic: GM_getValue('highlightColorHeroic', '#3193f5'),
@@ -5731,10 +5745,8 @@
                 legendary: GM_getValue('highlightColorLegendary', '#d1249e'),
                 artefact: GM_getValue('highlightColorArtefact', '#f5291b')
             };
-
             const t = Math.max(0, GM_getValue('highlightBorderThickness', 1));
             const b = Math.max(0, GM_getValue('highlightBlurInner', 0));
-
             style.innerHTML = `
                 [data-item].item.heroic, [data-item].loot.heroic, .item.heroic, .loot[data-item*='"rarity":"heroic"'] {
                     box-shadow: inset 0 0 ${b}px ${t}px ${colors.heroic}, 0 0 1px 0px ${colors.heroic} !important;
@@ -5761,11 +5773,190 @@
                     0%, 100% { box-shadow: inset 0 0 ${b * 2}px ${t * 6}px ${colors.artefact}, 0 0 12px 2px ${colors.artefact}; }
                     50% { box-shadow: inset 0 0 ${b * 2}px ${t * 4}px ${colors.artefact}, 0 0 20px 4px ${colors.artefact}; }
                 }`;
-            document.head.appendChild(style);
+        },
+
+        buildImageFrameCSS(style) {
+            const url = GM_getValue('highlightFrameUrl', '');
+            if (!url) { style.innerHTML = ''; return; }
+            // Sprite sheet: 160×32 (5 frames × 32px). Order: Unique, Heroic, Legendary, Upgraded, Artefact
+            // background-size: 500% 100% makes each frame fill the element exactly.
+            // background-position percentages: 0%, 25%, 50%, 75%, 100%
+            const frame = (pct) => `url('${url}') ${pct}% 0 / 500% 100% no-repeat`;
+            style.innerHTML = `
+                [data-item].item, [data-item].loot, .item[data-item], .loot[data-item] { position: relative !important; }
+                [data-item].item.unique::after, [data-item].loot.unique::after, .item.unique[data-item]::after, .loot[data-item*='"rarity":"unique"']::after {
+                    content:''; position:absolute; inset:0; pointer-events:none; z-index:100;
+                    background: ${frame(0)};
+                }
+                [data-item].item.heroic::after, [data-item].loot.heroic::after, .item.heroic[data-item]::after, .loot[data-item*='"rarity":"heroic"']::after {
+                    content:''; position:absolute; inset:0; pointer-events:none; z-index:100;
+                    background: ${frame(25)};
+                }
+                [data-item].item.legendary::after, [data-item].loot.legendary::after, .item.legendary[data-item]::after, .loot[data-item*='"rarity":"legendary"']::after, .loot[data-item*='"legendaryBow":1']::after {
+                    content:''; position:absolute; inset:0; pointer-events:none; z-index:100;
+                    background: ${frame(50)};
+                }
+                [data-item].item.upgraded::after, [data-item].loot.upgraded::after, .item.upgraded[data-item]::after, .loot[data-item*='"upgraded":1']::after {
+                    content:''; position:absolute; inset:0; pointer-events:none; z-index:100;
+                    background: ${frame(75)};
+                }
+                [data-item].item.artefact::after, [data-item].loot.artefact::after, .item.artefact[data-item]::after, .loot[data-item*='"rarity":"artefact"']::after {
+                    content:''; position:absolute; inset:0; pointer-events:none; z-index:100;
+                    background: ${frame(100)};
+                }`;
         },
 
         removeStyles() {
             document.getElementById('highlight-items-styles')?.remove();
+        },
+
+        openFrameEditor() {
+            document.getElementById('frame-editor-popup')?.remove();
+            const popup = document.createElement('div');
+            popup.id = 'frame-editor-popup';
+            Object.assign(popup.style, {
+                position: 'fixed', top: '50%', left: '50%',
+                transform: 'translate(-50%,-50%)',
+                padding: '15px', borderRadius: '12px',
+                border: '2px solid #1a4d0d',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.7)',
+                zIndex: '10003', color: 'white', fontSize: '13px',
+                width: '380px', cursor: 'grab',
+                background: '#0b2505', fontFamily: 'times-new-roman'
+            });
+
+            const title = document.createElement('div');
+            title.textContent = '🖼️ Edytor Ramek';
+            Object.assign(title.style, {
+                fontWeight: 'bold', fontSize: '16px', marginBottom: '12px',
+                paddingBottom: '10px', borderBottom: '1px solid #1a4d0d', userSelect: 'none'
+            });
+            popup.appendChild(title);
+
+            // Mode switcher
+            const modeRow = document.createElement('div');
+            Object.assign(modeRow.style, { display: 'flex', gap: '8px', marginBottom: '12px' });
+            const currentMode = GM_getValue('highlightFrameMode', 'color');
+
+            const makeTabBtn = (label, mode) => {
+                const btn = document.createElement('button');
+                btn.textContent = label;
+                const active = currentMode === mode;
+                Object.assign(btn.style, {
+                    flex: '1', padding: '8px', borderRadius: '8px',
+                    border: `1px solid ${active ? '#4CAF50' : '#1a4d0d'}`,
+                    background: active ? 'rgba(76,175,80,0.2)' : '#061d02',
+                    color: 'white', cursor: 'pointer', fontFamily: 'times-new-roman',
+                    fontSize: '13px', transition: 'all 0.2s'
+                });
+                btn.addEventListener('click', () => {
+                    GM_setValue('highlightFrameMode', mode);
+                    this.addStyles();
+                    this.openFrameEditor();
+                });
+                return btn;
+            };
+            modeRow.appendChild(makeTabBtn('🎨 Kolorowe obramowania', 'color'));
+            modeRow.appendChild(makeTabBtn('🖼️ Ramki graficzne', 'image'));
+            popup.appendChild(modeRow);
+
+            if (currentMode === 'image') {
+                // URL input
+                const urlLabel = document.createElement('div');
+                urlLabel.textContent = 'URL sprite sheet (160×32 px — kolejność: Unikat, Heroik, Legenda, Ulepszony, Artefakt)';
+                Object.assign(urlLabel.style, { fontSize: '11px', color: '#a0a0a0', marginBottom: '6px' });
+                popup.appendChild(urlLabel);
+
+                const urlInput = document.createElement('input');
+                urlInput.type = 'text';
+                urlInput.value = GM_getValue('highlightFrameUrl', '');
+                urlInput.placeholder = 'https://example.com/frames.png';
+                Object.assign(urlInput.style, {
+                    width: 'calc(100% - 24px)', padding: '8px 12px', borderRadius: '6px',
+                    border: '1px solid #1a4d0d', background: '#10240a', color: 'white',
+                    fontSize: '12px', fontFamily: 'times-new-roman', marginBottom: '10px'
+                });
+                urlInput.addEventListener('input', () => {
+                    GM_setValue('highlightFrameUrl', urlInput.value.trim());
+                    this.addStyles();
+                    updatePreview(urlInput.value.trim());
+                });
+                popup.appendChild(urlInput);
+
+                // Preview strip
+                const previewLabel = document.createElement('div');
+                previewLabel.textContent = 'Podgląd ramek (32×32):';
+                Object.assign(previewLabel.style, { fontSize: '11px', color: '#a0a0a0', marginBottom: '6px' });
+                popup.appendChild(previewLabel);
+
+                const previewRow = document.createElement('div');
+                Object.assign(previewRow.style, {
+                    display: 'flex', gap: '6px', marginBottom: '12px',
+                    padding: '8px', background: '#061d02', borderRadius: '8px',
+                    border: '1px solid #1a4d0d'
+                });
+
+                const rarityLabels = ['Unikat', 'Heroik', 'Legenda', 'Ulepsz.', 'Artefakt'];
+                const positions = [0, 25, 50, 75, 100];
+                const previews = rarityLabels.map((lbl, i) => {
+                    const col = document.createElement('div');
+                    Object.assign(col.style, { textAlign: 'center', flex: '1' });
+                    const box = document.createElement('div');
+                    Object.assign(box.style, {
+                        width: '32px', height: '32px', margin: '0 auto 4px',
+                        border: '1px solid #1a4d0d', borderRadius: '2px',
+                        backgroundImage: urlInput.value ? `url('${urlInput.value}')` : 'none',
+                        backgroundPosition: `${positions[i]}% 0`,
+                        backgroundSize: '500% 100%',
+                        backgroundRepeat: 'no-repeat',
+                        backgroundColor: '#10240a'
+                    });
+                    const lab = document.createElement('div');
+                    lab.textContent = lbl;
+                    Object.assign(lab.style, { fontSize: '9px', color: '#a0a0a0' });
+                    col.appendChild(box);
+                    col.appendChild(lab);
+                    previewRow.appendChild(col);
+                    return box;
+                });
+                popup.appendChild(previewRow);
+
+                const updatePreview = (url) => {
+                    previews.forEach(box => {
+                        box.style.backgroundImage = url ? `url('${url}')` : 'none';
+                    });
+                };
+            }
+
+            // Close button
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = 'Zamknij';
+            Object.assign(closeBtn.style, {
+                marginTop: '4px', background: '#4CAF50', border: 'none',
+                padding: '10px 20px', borderRadius: '8px', color: 'white',
+                fontWeight: '600', cursor: 'pointer', display: 'block',
+                width: '100%', fontSize: '13px', fontFamily: 'times-new-roman'
+            });
+            closeBtn.addEventListener('click', () => popup.remove());
+            popup.appendChild(closeBtn);
+            document.body.appendChild(popup);
+
+            // Make draggable
+            let dragging = false, ox, oy;
+            popup.addEventListener('mousedown', e => {
+                if (['INPUT','BUTTON'].includes(e.target.tagName)) return;
+                dragging = true;
+                popup.style.cursor = 'grabbing';
+                const r = popup.getBoundingClientRect();
+                ox = e.clientX - r.left; oy = e.clientY - r.top;
+            });
+            document.addEventListener('mousemove', e => {
+                if (!dragging) return;
+                popup.style.left = (e.clientX - ox) + 'px';
+                popup.style.top = (e.clientY - oy) + 'px';
+                popup.style.transform = 'none';
+            });
+            document.addEventListener('mouseup', () => { dragging = false; popup.style.cursor = 'grab'; });
         }
     };
 
@@ -6222,6 +6413,8 @@
             const sellPotions = GM_getValue('sellPotionsItems', false);
             const sellTp = GM_getValue('sellTpItems', false);
             const sellAll = GM_getValue('sellAllItems', false);
+            const sellGold = GM_getValue('sellGoldItems', false);
+            const sellBag = GM_getValue('sellBagItems', false);
             const items = document.querySelectorAll('#bag .items .item');
 
             for (let item of items) {
@@ -6230,12 +6423,13 @@
 
                 const itemName = data.schema?.inner?.name || 'nieznany przedmiot';
                 const rarity = data.schema?.inner?.rarity?.toLowerCase();
-                const isConsumable = data.schema?.inner?.category === 'consumable';
+                const type = data.schema?.inner?.category?.toLowerCase();
+                const isConsumable = type === 'consumable';
+                const isGold = type === 'golds';
+                const isBag = type === 'bag' || type === 'bags';
+                const isKey = type === 'keys';
+                const isQuest = type === 'quests';
                 const isCommon = rarity === 'common';
-                const isHeroic = rarity === 'heroic';
-                const isUnique = rarity === 'unique';
-                const isKey = data.schema?.inner?.category === 'keys';
-                const isQuest = data.schema?.inner?.category === 'quests';
                 const isTeleport = Array.isArray(data.schema?.inner?.attributes?.teleportTo);
                 const isPotion = isConsumable && !isTeleport;
                 const isScroll = isConsumable && isTeleport;
@@ -6245,25 +6439,35 @@
                 // Never sell keys or quest items
                 if (isKey || isQuest) continue;
 
-                let shouldSell = false;
-
                 if (sellAll) {
-                    shouldSell = true;
-                } else if (isPotion) {
-                    shouldSell = sellPotions || sellConsumables;
-                } else if (isScroll) {
-                    shouldSell = sellTp || sellConsumables;
-                } else if (isCommon) {
-                    shouldSell = true;
-                } else if (isHeroic) {
-                    shouldSell = sellHeroic || sellRarityItems;
-                } else if (isUnique) {
-                    shouldSell = sellUnique || sellRarityItems;
+                    // sell everything — fall through to shop logic
                 } else {
-                    shouldSell = sellRarityItems;
-                }
+                    // Rarity-based defaults (mirrors LootFilter logic)
+                    let shouldSell = false;
 
-                if (!shouldSell) continue;
+                    if (rarity === 'heroic') {
+                        if (sellHeroic || sellRarityItems) shouldSell = true;
+                    } else if (rarity === 'unique') {
+                        if (sellUnique || sellRarityItems) shouldSell = true;
+                    } else if (rarity === 'legendary' || rarity === 'artefact' || rarity === 'upgraded') {
+                        if (sellRarityItems) shouldSell = true;
+                    } else if (isCommon) {
+                        shouldSell = true;
+                    }
+
+                    // Type-based overrides (same pattern as LootFilter)
+                    if (isGold) {
+                        shouldSell = sellGold;
+                    } else if (isBag) {
+                        shouldSell = sellBag;
+                    } else if (isPotion) {
+                        shouldSell = sellPotions || sellConsumables;
+                    } else if (isScroll) {
+                        shouldSell = sellTp || sellConsumables;
+                    }
+
+                    if (!shouldSell) continue;
+                }
 
                 const shopGrid = document.querySelector('.shop__store');
                 if (shopGrid) {
@@ -6272,6 +6476,348 @@
                     break;
                 }
             }
+        }
+    };
+
+    // ======================== UI THEMER ========================
+    const UIThemer = {
+        DEFAULTS: {
+            bgDark:       '#0b2505',
+            bgDarker:     '#061d02',
+            bgInput:      '#10240a',
+            border:       '#1a4d0d',
+            accent:       '#4CAF50',
+            accentHover:  '#66bb6a',
+            accentSecond: '#2d7a1a',
+            text:         '#ffffff',
+            textSub:      '#a0a0a0'
+        },
+
+        LABELS: {
+            bgDark:       'Tło panelu',
+            bgDarker:     'Tło wewnętrzne',
+            bgInput:      'Tło pól input',
+            border:       'Kolor obramowań',
+            accent:       'Kolor akcentu (aktywny)',
+            accentHover:  'Kolor akcentu (hover)',
+            accentSecond: 'Kolor akcentu (drugorzędny)',
+            text:         'Kolor tekstu głównego',
+            textSub:      'Kolor tekstu pomocniczego'
+        },
+
+        toggle(enabled) {
+            GM_setValue('uiThemerEnabled', enabled);
+            if (enabled) this.apply(); else this.remove();
+        },
+
+        getTheme() {
+            const d = this.DEFAULTS;
+            const r = {};
+            Object.keys(d).forEach(k => { r[k] = GM_getValue('uiTheme_' + k, d[k]); });
+            return r;
+        },
+
+        buildCSS(t) {
+            return `
+                #addon-panel, #settings-popup, #frame-editor-popup, #ui-themer-popup,
+                #kill-counter-panel, #npcs-on-map-panel, #items-on-map-panel,
+                #players-on-map-panel, #legend-loot-panel, #character-switcher-panel {
+                    background: ${t.bgDark} !important;
+                    border-color: ${t.border} !important;
+                }
+                #addon-panel .panel-header { background: ${t.bgDarker} !important; }
+                #addon-panel .separator, #settings-popup .separator { background: ${t.border} !important; }
+                #addon-panel .addon-row { border-color: ${t.border} !important; }
+                #settings-popup > div[style*="background"], #settings-popup div[style*="#061d02"] {
+                    background: ${t.bgDarker} !important; border-color: ${t.border} !important;
+                }
+                #addon-panel input, #settings-popup input[type="text"],
+                #settings-popup input[type="number"], #settings-popup select {
+                    background: ${t.bgInput} !important; border-color: ${t.border} !important;
+                    color: ${t.text} !important;
+                }
+                #addon-panel button, #settings-popup button {
+                    background: ${t.accent} !important;
+                }
+                #addon-panel button:hover, #settings-popup button:hover {
+                    background: ${t.accentHover} !important;
+                }
+                #addon-panel *, #settings-popup *, #frame-editor-popup * { color: ${t.text}; }
+                #addon-panel [style*="#a0a0a0"], #settings-popup [style*="#a0a0a0"] { color: ${t.textSub} !important; }
+                #addon-panel ::-webkit-scrollbar-thumb { background: ${t.border} !important; }
+                #addon-panel ::-webkit-scrollbar-thumb:hover { background: ${t.accentSecond} !important; }
+                #addon-panel ::-webkit-scrollbar-track { background: ${t.bgDarker} !important; }
+            `;
+        },
+
+        apply() {
+            this.remove();
+            const t = this.getTheme();
+            const style = document.createElement('style');
+            style.id = 'ui-themer-styles';
+            style.innerHTML = this.buildCSS(t);
+            document.head.appendChild(style);
+        },
+
+        remove() { document.getElementById('ui-themer-styles')?.remove(); },
+
+        getPresets() {
+            try { return JSON.parse(GM_getValue('uiThemePresets', '{}')); } catch { return {}; }
+        },
+
+        savePreset(name) {
+            if (!name.trim()) return;
+            const p = this.getPresets();
+            p[name.trim()] = this.getTheme();
+            GM_setValue('uiThemePresets', JSON.stringify(p));
+        },
+
+        loadPreset(name) {
+            const p = this.getPresets()[name];
+            if (!p) return;
+            Object.entries(p).forEach(([k, v]) => GM_setValue('uiTheme_' + k, v));
+            this.apply();
+        },
+
+        deletePreset(name) {
+            const p = this.getPresets();
+            delete p[name];
+            GM_setValue('uiThemePresets', JSON.stringify(p));
+        },
+
+        openEditor() {
+            document.getElementById('ui-themer-popup')?.remove();
+            const popup = document.createElement('div');
+            popup.id = 'ui-themer-popup';
+            Object.assign(popup.style, {
+                position: 'fixed', top: '50%', left: '50%',
+                transform: 'translate(-50%,-50%)',
+                padding: '15px', borderRadius: '12px',
+                border: '2px solid #1a4d0d',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.7)',
+                zIndex: '10004', color: 'white', fontSize: '13px',
+                width: '400px', cursor: 'grab',
+                background: '#0b2505', fontFamily: 'times-new-roman'
+            });
+
+            const title = document.createElement('div');
+            title.textContent = '🎨 Edytor Motywu UI';
+            Object.assign(title.style, {
+                fontWeight: 'bold', fontSize: '16px', marginBottom: '12px',
+                paddingBottom: '10px', borderBottom: '1px solid #1a4d0d', userSelect: 'none'
+            });
+            popup.appendChild(title);
+
+            const scroll = document.createElement('div');
+            Object.assign(scroll.style, {
+                maxHeight: '340px', overflowY: 'auto', paddingRight: '4px',
+                scrollbarWidth: 'thin', scrollbarColor: '#1a4d0d #061d02'
+            });
+
+            const theme = this.getTheme();
+            const pickers = {};
+
+            Object.entries(this.LABELS).forEach(([key, label]) => {
+                const row = document.createElement('div');
+                Object.assign(row.style, {
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    marginBottom: '8px', padding: '8px 10px',
+                    background: '#061d02', borderRadius: '8px', border: '1px solid #1a4d0d'
+                });
+                const lbl = document.createElement('span');
+                lbl.textContent = label;
+                Object.assign(lbl.style, { fontSize: '12px', fontWeight: '600' });
+
+                const colorRow = document.createElement('div');
+                Object.assign(colorRow.style, { display: 'flex', alignItems: 'center', gap: '8px' });
+
+                const picker = document.createElement('input');
+                picker.type = 'color';
+                picker.value = theme[key];
+                Object.assign(picker.style, {
+                    width: '40px', height: '28px', border: '1px solid #1a4d0d',
+                    borderRadius: '4px', background: 'transparent', cursor: 'pointer'
+                });
+                picker.addEventListener('input', () => {
+                    GM_setValue('uiTheme_' + key, picker.value);
+                    if (GM_getValue('uiThemerEnabled', false)) this.apply();
+                });
+
+                const resetBtn = document.createElement('button');
+                resetBtn.textContent = '↺';
+                Object.assign(resetBtn.style, {
+                    padding: '2px 7px', borderRadius: '4px', border: '1px solid #1a4d0d',
+                    background: '#10240a', color: 'white', cursor: 'pointer',
+                    fontSize: '13px', fontFamily: 'times-new-roman'
+                });
+                resetBtn.title = 'Resetuj do domyślnego';
+                resetBtn.addEventListener('click', () => {
+                    picker.value = this.DEFAULTS[key];
+                    GM_setValue('uiTheme_' + key, this.DEFAULTS[key]);
+                    if (GM_getValue('uiThemerEnabled', false)) this.apply();
+                });
+
+                pickers[key] = picker;
+                colorRow.appendChild(picker);
+                colorRow.appendChild(resetBtn);
+                row.appendChild(lbl);
+                row.appendChild(colorRow);
+                scroll.appendChild(row);
+            });
+            popup.appendChild(scroll);
+
+            // Preset management
+            const presetSection = document.createElement('div');
+            Object.assign(presetSection.style, {
+                marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #1a4d0d'
+            });
+
+            const presetTitle = document.createElement('div');
+            presetTitle.textContent = '💾 Presety';
+            Object.assign(presetTitle.style, { fontWeight: '600', fontSize: '13px', marginBottom: '8px' });
+            presetSection.appendChild(presetTitle);
+
+            const presetInputRow = document.createElement('div');
+            Object.assign(presetInputRow.style, { display: 'flex', gap: '6px', marginBottom: '8px' });
+
+            const presetInput = document.createElement('input');
+            presetInput.type = 'text';
+            presetInput.placeholder = 'Nazwa presetu...';
+            Object.assign(presetInput.style, {
+                flex: '1', padding: '6px 10px', borderRadius: '6px',
+                border: '1px solid #1a4d0d', background: '#10240a',
+                color: 'white', fontSize: '12px', fontFamily: 'times-new-roman'
+            });
+
+            const saveBtn = document.createElement('button');
+            saveBtn.textContent = 'Zapisz';
+            Object.assign(saveBtn.style, {
+                padding: '6px 12px', borderRadius: '6px', border: 'none',
+                background: '#4CAF50', color: 'white', cursor: 'pointer',
+                fontFamily: 'times-new-roman', fontSize: '12px'
+            });
+            saveBtn.addEventListener('click', () => {
+                this.savePreset(presetInput.value);
+                presetInput.value = '';
+                renderPresets();
+            });
+
+            presetInputRow.appendChild(presetInput);
+            presetInputRow.appendChild(saveBtn);
+            presetSection.appendChild(presetInputRow);
+
+            const presetList = document.createElement('div');
+            Object.assign(presetList.style, {
+                maxHeight: '100px', overflowY: 'auto',
+                scrollbarWidth: 'thin', scrollbarColor: '#1a4d0d #061d02'
+            });
+
+            const renderPresets = () => {
+                presetList.innerHTML = '';
+                const presets = this.getPresets();
+                if (Object.keys(presets).length === 0) {
+                    const empty = document.createElement('div');
+                    empty.textContent = 'Brak zapisanych presetów';
+                    Object.assign(empty.style, { fontSize: '11px', color: '#a0a0a0', padding: '4px' });
+                    presetList.appendChild(empty);
+                    return;
+                }
+                Object.keys(presets).forEach(name => {
+                    const row = document.createElement('div');
+                    Object.assign(row.style, {
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '4px 8px', marginBottom: '4px',
+                        background: '#061d02', borderRadius: '6px', border: '1px solid #1a4d0d'
+                    });
+                    const nameEl = document.createElement('span');
+                    nameEl.textContent = name;
+                    Object.assign(nameEl.style, { fontSize: '12px', flex: '1' });
+
+                    const btnRow = document.createElement('div');
+                    Object.assign(btnRow.style, { display: 'flex', gap: '4px' });
+
+                    const loadBtn = document.createElement('button');
+                    loadBtn.textContent = 'Wczytaj';
+                    Object.assign(loadBtn.style, {
+                        padding: '3px 8px', borderRadius: '4px', border: 'none',
+                        background: '#4CAF50', color: 'white', cursor: 'pointer',
+                        fontSize: '11px', fontFamily: 'times-new-roman'
+                    });
+                    loadBtn.addEventListener('click', () => {
+                        this.loadPreset(name);
+                        Object.entries(this.getTheme()).forEach(([k, v]) => {
+                            if (pickers[k]) pickers[k].value = v;
+                        });
+                    });
+
+                    const delBtn = document.createElement('button');
+                    delBtn.textContent = '✕';
+                    Object.assign(delBtn.style, {
+                        padding: '3px 7px', borderRadius: '4px', border: '1px solid #1a4d0d',
+                        background: '#10240a', color: '#ff6b6b', cursor: 'pointer',
+                        fontSize: '11px', fontFamily: 'times-new-roman'
+                    });
+                    delBtn.addEventListener('click', () => { this.deletePreset(name); renderPresets(); });
+
+                    btnRow.appendChild(loadBtn);
+                    btnRow.appendChild(delBtn);
+                    row.appendChild(nameEl);
+                    row.appendChild(btnRow);
+                    presetList.appendChild(row);
+                });
+            };
+            renderPresets();
+            presetSection.appendChild(presetList);
+            popup.appendChild(presetSection);
+
+            // Reset all + Close
+            const footerRow = document.createElement('div');
+            Object.assign(footerRow.style, { display: 'flex', gap: '8px', marginTop: '12px' });
+
+            const resetAllBtn = document.createElement('button');
+            resetAllBtn.textContent = 'Resetuj wszystko';
+            Object.assign(resetAllBtn.style, {
+                flex: '1', padding: '10px', borderRadius: '8px', border: '1px solid #1a4d0d',
+                background: '#10240a', color: 'white', cursor: 'pointer',
+                fontFamily: 'times-new-roman', fontSize: '13px'
+            });
+            resetAllBtn.addEventListener('click', () => {
+                Object.entries(this.DEFAULTS).forEach(([k, v]) => {
+                    GM_setValue('uiTheme_' + k, v);
+                    if (pickers[k]) pickers[k].value = v;
+                });
+                if (GM_getValue('uiThemerEnabled', false)) this.apply();
+            });
+
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = 'Zamknij';
+            Object.assign(closeBtn.style, {
+                flex: '1', padding: '10px', borderRadius: '8px', border: 'none',
+                background: '#4CAF50', color: 'white', cursor: 'pointer',
+                fontWeight: '600', fontFamily: 'times-new-roman', fontSize: '13px'
+            });
+            closeBtn.addEventListener('click', () => popup.remove());
+
+            footerRow.appendChild(resetAllBtn);
+            footerRow.appendChild(closeBtn);
+            popup.appendChild(footerRow);
+            document.body.appendChild(popup);
+
+            // Draggable
+            let dragging = false, ox, oy;
+            popup.addEventListener('mousedown', e => {
+                if (['INPUT','BUTTON'].includes(e.target.tagName)) return;
+                dragging = true; popup.style.cursor = 'grabbing';
+                const r = popup.getBoundingClientRect();
+                ox = e.clientX - r.left; oy = e.clientY - r.top;
+            });
+            document.addEventListener('mousemove', e => {
+                if (!dragging) return;
+                popup.style.left = (e.clientX - ox) + 'px';
+                popup.style.top = (e.clientY - oy) + 'px';
+                popup.style.transform = 'none';
+            });
+            document.addEventListener('mouseup', () => { dragging = false; popup.style.cursor = 'grab'; });
         }
     };
 
@@ -6315,6 +6861,7 @@
          title: 'Highlights', desc: 'Dodaje obramowania do przedmiotów w zależności od ich rzadkości.',
          onToggle: (e) => Highlights.toggle(e),
          settings: [
+             { key: 'openFrameEditor', label: 'Edytor Ramek', type: 'button', buttonText: '🖼️ Otwórz Edytor Ramek', action: () => Highlights.openFrameEditor() },
              { key: 'highlightBorderThickness', label: 'Grubość obramowania (px)', type: 'number', default: 1, onChange: () => Highlights.addStyles() },
              { key: 'highlightBlurInner', label: 'Rozmycie wewnętrzne (px)', type: 'number', default: 0, onChange: () => Highlights.addStyles() },
              { key: 'highlightColorUnique', label: 'Kolor obramowania Unikatowy', type: 'color', default: '#f5b536' },
@@ -6348,7 +6895,9 @@
              { key: 'sellPotionsItems', label: 'Sprzedawaj mikstury', type: 'checkbox', default: false },
              { key: 'sellTpItems', label: 'Sprzedawaj zwoje', type: 'checkbox', default: false },
              { key: 'sellAllItems', label: 'Sprzedawaj wszystko', type: 'checkbox', default: false },
-             { key: 'sellConsumablesItems', label: 'Sprzedawaj każdy typ konsumpcyjnych przedmiotów', type: 'checkbox', default: false }
+             { key: 'sellConsumablesItems', label: 'Sprzedawaj każdy typ konsumpcyjnych przedmiotów', type: 'checkbox', default: false },
+             { key: 'sellGoldItems', label: 'Sprzedawaj złoto', type: 'checkbox', default: false },
+             { key: 'sellBagItems', label: 'Sprzedawaj torby/kontenery', type: 'checkbox', default: false }
          ]},
         {
             id: 'auctionHelperEnabled',
@@ -6455,7 +7004,16 @@
              { key: 'autoNeutralAccept', label: 'Zawsze akceptuj neutralne przedmioty', type: 'checkbox', default: false },
              { key: 'autoArrowsAccept', label: 'Zawsze akceptuj strzały', type: 'checkbox', default: false },
              { key: 'autoKeysAccept', label: 'Zawsze akceptuj klucze', type: 'checkbox', default: false },
-         ]}
+             { key: 'autoLootRejectGold', label: 'Zawsze odrzucaj złoto', type: 'checkbox', default: false },
+             { key: 'autoLootRejectBag', label: 'Zawsze odrzucaj torby/kontenery', type: 'checkbox', default: false }
+         ]},
+        { id: 'uiThemerEnabled', default: false, icon: 'https://i.imgur.com/9bZkFAn.png',
+          title: 'UI Themer', desc: 'Edytor motywu UI — modyfikuj kolory interfejsu i zapisuj własne presety.',
+          onToggle: (e) => UIThemer.toggle(e),
+          settings: [
+              { key: 'openUIThemer', label: 'Edytor Motywu', type: 'button',
+                buttonText: '🎨 Otwórz Edytor Motywu', action: () => UIThemer.openEditor() }
+          ]}
     ];
 
     // ======================== PANEL UI ========================
@@ -7602,6 +8160,7 @@
             }
         });
 
+        if (GM_getValue('uiThemerEnabled', false)) UIThemer.apply();
         setTimeout(() => WelcomePanel.show(), 1000);
         observer.observe(document.body, { childList: true, subtree: true });
         ADDONS.forEach(addon => addon.onToggle(GM_getValue(addon.id, addon.default)));
