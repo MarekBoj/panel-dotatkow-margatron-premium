@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.2.0
+// @version      5.2.1
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -5810,6 +5810,26 @@
                 [data-item].item.artefact::after, [data-item].loot.artefact::after, .item.artefact[data-item]::after, .loot[data-item*='"rarity":"artefact"']::after {
                     content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
                     background: ${frame(100)};
+                }
+                /* Lift all direct children of framed items above the ::after overlay.
+                   Pseudo-elements with positive z-index paint after normal-flow children,
+                   so even z-index:1 covers them. Giving children z-index:2 reverses that. */
+                :is(
+                    [data-item].item.unique,  [data-item].item.heroic,
+                    [data-item].item.upgraded,[data-item].item.legendary,
+                    [data-item].item.artefact,
+                    [data-item].loot.unique,  [data-item].loot.heroic,
+                    [data-item].loot.upgraded,[data-item].loot.legendary,
+                    [data-item].loot.artefact,
+                    .loot[data-item*='"rarity":"unique"'],
+                    .loot[data-item*='"rarity":"heroic"'],
+                    .loot[data-item*='"upgraded":1'],
+                    .loot[data-item*='"rarity":"legendary"'],
+                    .loot[data-item*='"legendaryBow":1'],
+                    .loot[data-item*='"rarity":"artefact"']
+                ) > * {
+                    position: relative !important;
+                    z-index: 2 !important;
                 }`;
         },
 
