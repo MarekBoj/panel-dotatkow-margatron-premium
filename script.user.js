@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.2.1
+// @version      5.2.2
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -5723,6 +5723,8 @@
 
     // ======================== HIGHLIGHTS ========================
     const Highlights = {
+        itemIconObserver: null,
+
         toggle(enabled) {
             GM_setValue('highlightItemsEnabled', enabled);
             if (enabled) {
@@ -5739,8 +5741,10 @@
             style.id = "highlight-items-styles";
             if (mode === 'image') {
                 this.buildImageFrameCSS(style);
+                this.startItemIconObserver();
             } else {
                 this.buildColorBorderCSS(style);
+                this.stopItemIconObserver();
             }
             document.head.appendChild(style);
         },
@@ -5811,30 +5815,80 @@
                     content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
                     background: ${frame(100)};
                 }
-                /* Lift all direct children of framed items above the ::after overlay.
-                   Pseudo-elements with positive z-index paint after normal-flow children,
-                   so even z-index:1 covers them. Giving children z-index:2 reverses that. */
-                :is(
-                    [data-item].item.unique,  [data-item].item.heroic,
-                    [data-item].item.upgraded,[data-item].item.legendary,
-                    [data-item].item.artefact,
-                    [data-item].loot.unique,  [data-item].loot.heroic,
-                    [data-item].loot.upgraded,[data-item].loot.legendary,
-                    [data-item].loot.artefact,
-                    .loot[data-item*='"rarity":"unique"'],
-                    .loot[data-item*='"rarity":"heroic"'],
-                    .loot[data-item*='"upgraded":1'],
-                    .loot[data-item*='"rarity":"legendary"'],
-                    .loot[data-item*='"legendaryBow":1'],
-                    .loot[data-item*='"rarity":"artefact"']
-                ) > * {
-                    position: relative !important;
-                    z-index: 2 !important;
+                /* Suppress the element's own background-image so the JS-injected
+                   <img> child (z-index:2) becomes the sole visible item icon.
+                   The ::after frame at z-index:1 sits between bg and icon. */
+                [data-item].item.unique,  [data-item].item.heroic,
+                [data-item].item.upgraded,[data-item].item.legendary,
+                [data-item].item.artefact,
+                [data-item].loot.unique,  [data-item].loot.heroic,
+                [data-item].loot.upgraded,[data-item].loot.legendary,
+                [data-item].loot.artefact {
+                    background-image: none !important;
                 }`;
         },
 
         removeStyles() {
             document.getElementById('highlight-items-styles')?.remove();
+            this.stopItemIconObserver();
+        },
+
+        startItemIconObserver() {
+            if (this.itemIconObserver) return;
+
+            const RARITY_SEL = [
+                '[data-item].item.unique',    '[data-item].item.heroic',
+                '[data-item].item.upgraded',  '[data-item].item.legendary',
+                '[data-item].item.artefact',
+                '[data-item].loot.unique',    '[data-item].loot.heroic',
+                '[data-item].loot.upgraded',  '[data-item].loot.legendary',
+                '[data-item].loot.artefact'
+            ].join(', ');
+
+            const inject = (item) => {
+                // Read URL from inline style (our CSS !important hides it visually
+                // but el.style still returns the value Vue set via JS)
+                const raw = item.style.backgroundImage;
+                if (!raw || raw === 'none') return;
+                const m = raw.match(/url\(["']?(https?[^"')]+)["']?\)/);
+                if (!m) return;
+                const url = m[1];
+
+                let icon = item.querySelector('.highlight-frame-icon');
+                if (!icon) {
+                    icon = document.createElement('img');
+                    icon.className = 'highlight-frame-icon';
+                    Object.assign(icon.style, {
+                        position: 'absolute', top: '0', left: '0',
+                        width: '100%', height: '100%',
+                        objectFit: 'contain', pointerEvents: 'none', zIndex: '2'
+                    });
+                    item.appendChild(icon);
+                }
+                // Keep src up-to-date if Vue replaces the item in-place
+                if (icon.src !== url) icon.src = url;
+            };
+
+            let debounce = null;
+            const processAll = () => {
+                clearTimeout(debounce);
+                debounce = setTimeout(() => {
+                    document.querySelectorAll(RARITY_SEL).forEach(inject);
+                }, 50);
+            };
+
+            processAll(); // initial pass
+
+            this.itemIconObserver = new MutationObserver(processAll);
+            this.itemIconObserver.observe(document.body, { childList: true, subtree: true });
+        },
+
+        stopItemIconObserver() {
+            if (this.itemIconObserver) {
+                this.itemIconObserver.disconnect();
+                this.itemIconObserver = null;
+            }
+            document.querySelectorAll('.highlight-frame-icon').forEach(el => el.remove());
         },
 
         openFrameEditor() {
