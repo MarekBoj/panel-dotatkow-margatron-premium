@@ -6538,7 +6538,8 @@
             const desc = (sel) => PANEL_IDS.map(id => `${id} ${sel}`).join(', ');
 
             // Object.assign(el.style, { background: '#hex' }) normalises hex to rgb() in the DOM,
-            // so [style*="#hex"] never matches. We must include both forms.
+            // so [style*="#hex"] never matches. We must include both hex AND rgb forms.
+            // innerHTML-parsed styles keep the original hex, so both are needed regardless.
             const matchInline = (tag, ...pairs) =>
                 PANEL_IDS.flatMap(id =>
                     pairs.flatMap(([hex, rgb]) => [
@@ -6547,16 +6548,20 @@
                     ])
                 ).join(', ');
 
+            // Buttons in all panels — skip explicit red/danger buttons
+            const allBtns     = PANEL_IDS.map(id => `${id} button:not([style*="255,0,0"]):not([style*="#ff0000"])`).join(', ');
+            const allBtnsHovr = PANEL_IDS.map(id => `${id} button:not([style*="255,0,0"]):not([style*="#ff0000"]):hover`).join(', ');
+
             return `
                 /* ── Panel shells ──────────────────────────────────────── */
                 ${ALL_PANELS} {
                     background: ${t.bgDark} !important;
                     border-color: ${t.border} !important;
-                    scrollbar-color: ${t.border} ${t.bgDarker};
-                    scrollbar-width: thin;
+                    scrollbar-color: ${t.border} ${t.bgDarker} !important;
+                    scrollbar-width: thin !important;
                 }
 
-                /* ── Webkit scrollbars for all panels ──────────────────── */
+                /* ── Webkit scrollbars — panel roots ───────────────────── */
                 ${desc('::-webkit-scrollbar-thumb')} {
                     background: ${t.border} !important;
                 }
@@ -6567,20 +6572,66 @@
                     background: ${t.bgDarker} !important;
                 }
 
-                /* ── Panel structural elements ─────────────────────────── */
+                /* ── Scrollable inner containers (inline scrollbar-color) ─
+                   Object.assign sets scrollbar-color inline; we need the
+                   descendant rule with !important to override it.           */
+                ${desc('[style*="scrollbar-color"]')} {
+                    scrollbar-color: ${t.border} ${t.bgDarker} !important;
+                }
+                ${desc('[style*="scrollbar-color"]::-webkit-scrollbar-thumb')} {
+                    background: ${t.border} !important;
+                }
+                ${desc('[style*="scrollbar-color"]::-webkit-scrollbar-track')} {
+                    background: ${t.bgDarker} !important;
+                }
+
+                /* ── Panel structural elements (class-based) ───────────── */
                 #addon-panel .panel-header { background: ${t.bgDarker} !important; }
                 #addon-panel .separator, #settings-popup .separator { background: ${t.border} !important; }
                 #addon-panel .addon-row { border-color: ${t.border} !important; }
 
-                /* ── Inner rows/containers with inline bgDark / bgDarker ───
-                   Matches both the original hex literal AND the rgb() form
-                   that the browser writes when styles are set via JS.        */
-                ${matchInline('div',
+                /* ── Separator lines (1px-tall div with inline background) */
+                ${desc('div[style*="height: 1px"]')} {
+                    background: ${t.border} !important;
+                }
+
+                /* ── bgDarker elements (section rows, cards, popups) ───────
+                   Both hex literal (from innerHTML) and rgb() (from CSSOM). */
+                ${matchInline('',
                     ['#061d02', 'rgb(6, 29, 2)'],
                     ['#0b2505', 'rgb(11, 37, 5)']
                 )} {
                     background: ${t.bgDarker} !important;
                     border-color: ${t.border} !important;
+                }
+
+                /* ── bgInput elements (icon wrappers, secondary buttons) ── */
+                ${matchInline('',
+                    ['#10240a', 'rgb(16, 36, 10)']
+                )} {
+                    background: ${t.bgInput} !important;
+                    border-color: ${t.border} !important;
+                }
+
+                /* ── Toggle sliders (round span, border-radius:24px) ───────
+                   Off-state uses border color; on-state uses accent.
+                   CSS !important overrides the inline background-color
+                   set by the JS updateSliderVisual handler.                 */
+                ${desc('span[style*="border-radius: 24px"]')} {
+                    border-color: ${t.border} !important;
+                }
+                ${desc('span[style*="border-radius: 24px"][style*="background-color: rgb(26, 77, 13)"]')},
+                ${desc('span[style*="border-radius: 24px"][style*="background: rgb(26, 77, 13)"]')},
+                ${desc('span[style*="border-radius: 24px"][style*="background:#1a4d0d"]')},
+                ${desc('span[style*="border-radius: 24px"][style*="background: #1a4d0d"]')} {
+                    background: ${t.border} !important;
+                }
+                ${desc('span[style*="border-radius: 24px"][style*="background-color: rgb(76, 175, 80)"]')},
+                ${desc('span[style*="border-radius: 24px"][style*="background: rgb(76, 175, 80)"]')},
+                ${desc('span[style*="border-radius: 24px"][style*="background:#4CAF50"]')},
+                ${desc('span[style*="border-radius: 24px"][style*="background: #4CAF50"]')} {
+                    background: ${t.accent} !important;
+                    border-color: ${t.accentSecond} !important;
                 }
 
                 /* ── Input fields & selects in all panels ───────────────── */
@@ -6593,21 +6644,38 @@
                     color: ${t.text} !important;
                 }
 
-                /* ── Buttons (skip explicit danger/red buttons) ─────────── */
-                #addon-panel button:not([style*="255,0,0"]):not([style*="#ff0000"]),
-                #settings-popup button:not([style*="255,0,0"]):not([style*="#ff0000"]) {
+                /* ── Buttons in ALL panels (skip danger/red buttons) ─────── */
+                ${allBtns} {
                     background: ${t.accent} !important;
+                    color: ${t.text} !important;
+                    border-color: ${t.border} !important;
                 }
-                #addon-panel button:not([style*="255,0,0"]):not([style*="#ff0000"]):hover,
-                #settings-popup button:not([style*="255,0,0"]):not([style*="#ff0000"]):hover {
+                ${allBtnsHovr} {
                     background: ${t.accentHover} !important;
+                }
+                /* Secondary (dark) buttons keep bgInput background */
+                ${PANEL_IDS.map(id => `${id} button[style*="rgb(16, 36, 10)"]`).join(', ')},
+                ${PANEL_IDS.map(id => `${id} button[style*="#10240a"]`).join(', ')} {
+                    background: ${t.bgInput} !important;
                 }
 
                 /* ── Text colours ───────────────────────────────────────── */
-                #addon-panel *, #settings-popup *, #frame-editor-popup * { color: ${t.text}; }
+                ${ALL_PANELS} * { color: ${t.text}; }
+                /* Sub-text: CSSOM rgb() form and innerHTML hex form */
                 ${matchInline('',
                     ['#a0a0a0', 'rgb(160, 160, 160)']
                 )} {
+                    color: ${t.textSub} !important;
+                }
+                /* Primary text from innerHTML hex (not rgb-normalised by HTML parser) */
+                ${PANEL_IDS.map(id =>
+                    `${id} [style*="color:#e0e0e0"], ${id} [style*="color: #e0e0e0"]`
+                ).join(', ')} {
+                    color: ${t.text} !important;
+                }
+                ${PANEL_IDS.map(id =>
+                    `${id} [style*="color:#888"], ${id} [style*="color: #888"]`
+                ).join(', ')} {
                     color: ${t.textSub} !important;
                 }
             `;
