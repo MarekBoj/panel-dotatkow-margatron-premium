@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.1.1
+// @version      5.1.2
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -6436,26 +6436,16 @@
 
                 const color = this.RARITY_SHOP_COLORS[rarity] || '#888888';
 
-                // Never sell keys or quest items
                 if (isKey || isQuest) continue;
 
                 if (sellAll) {
-                    // sell everything — fall through to shop logic
                 } else {
-                    // Rarity-based defaults (mirrors LootFilter logic)
                     let shouldSell = false;
 
-                    if (rarity === 'heroic') {
-                        if (sellHeroic || sellRarityItems) shouldSell = true;
-                    } else if (rarity === 'unique') {
-                        if (sellUnique || sellRarityItems) shouldSell = true;
-                    } else if (rarity === 'legendary' || rarity === 'artefact' || rarity === 'upgraded') {
-                        if (sellRarityItems) shouldSell = true;
-                    } else if (isCommon) {
+                    if (isCommon) {
                         shouldSell = true;
                     }
 
-                    // Type-based overrides (same pattern as LootFilter)
                     if (isGold) {
                         shouldSell = sellGold;
                     } else if (isBag) {
@@ -6464,6 +6454,14 @@
                         shouldSell = sellPotions || sellConsumables;
                     } else if (isScroll) {
                         shouldSell = sellTp || sellConsumables;
+                    }
+
+                    if (rarity === 'heroic') {
+                        if (!sellHeroic) shouldSell = false;
+                    } else if (rarity === 'unique') {
+                        if (!sellUnique) shouldSell = false;
+                    } else if (rarity === 'legendary' || rarity === 'artefact' || rarity === 'upgraded') {
+                        if (!sellRarityItems) shouldSell = false;
                     }
 
                     if (!shouldSell) continue;
@@ -6896,8 +6894,8 @@
              { key: 'sellTpItems', label: 'Sprzedawaj zwoje', type: 'checkbox', default: false },
              { key: 'sellAllItems', label: 'Sprzedawaj wszystko', type: 'checkbox', default: false },
              { key: 'sellConsumablesItems', label: 'Sprzedawaj każdy typ konsumpcyjnych przedmiotów', type: 'checkbox', default: false },
-             { key: 'sellGoldItems', label: 'Sprzedawaj złoto', type: 'checkbox', default: false },
-             { key: 'sellBagItems', label: 'Sprzedawaj torby/kontenery', type: 'checkbox', default: false }
+             { key: 'sellGoldItems', label: 'Sprzedawaj złoto w worku', type: 'checkbox', default: false },
+             { key: 'sellBagItems', label: 'Sprzedawaj torby', type: 'checkbox', default: false }
          ]},
         {
             id: 'auctionHelperEnabled',
@@ -7005,15 +7003,15 @@
              { key: 'autoArrowsAccept', label: 'Zawsze akceptuj strzały', type: 'checkbox', default: false },
              { key: 'autoKeysAccept', label: 'Zawsze akceptuj klucze', type: 'checkbox', default: false },
              { key: 'autoLootRejectGold', label: 'Zawsze odrzucaj złoto', type: 'checkbox', default: false },
-             { key: 'autoLootRejectBag', label: 'Zawsze odrzucaj torby/kontenery', type: 'checkbox', default: false }
+             { key: 'autoLootRejectBag', label: 'Zawsze odrzucaj torby', type: 'checkbox', default: false }
          ]},
         { id: 'uiThemerEnabled', default: false, icon: 'https://i.imgur.com/9bZkFAn.png',
-          title: 'UI Themer', desc: 'Edytor motywu UI — modyfikuj kolory interfejsu i zapisuj własne presety.',
-          onToggle: (e) => UIThemer.toggle(e),
-          settings: [
-              { key: 'openUIThemer', label: 'Edytor Motywu', type: 'button',
-                buttonText: '🎨 Otwórz Edytor Motywu', action: () => UIThemer.openEditor() }
-          ]}
+         title: 'UI Themer', desc: 'Edytor motywu UI — modyfikuj kolory interfejsu i zapisuj własne presety.',
+         onToggle: (e) => UIThemer.toggle(e),
+         settings: [
+             { key: 'openUIThemer', label: 'Edytor Motywu', type: 'button',
+              buttonText: '🎨 Otwórz Edytor Motywu', action: () => UIThemer.openEditor() }
+         ]}
     ];
 
     // ======================== PANEL UI ========================
