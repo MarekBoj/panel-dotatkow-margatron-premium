@@ -6590,7 +6590,20 @@
                 #addon-panel .separator, #settings-popup .separator { background: ${t.border} !important; }
                 #addon-panel .addon-row { border-color: ${t.border} !important; }
 
-                /* ── Separator lines (1px-tall div with inline background) */
+                /* ── ALL inline borders using the border color ──────────────
+                   Covers borderBottom/borderTop on every header element
+                   (Minutnik header, settings popup titles, UIThemer sections,
+                   frame-editor titles, NPC/Items/Players panel headers…)
+                   ANY element whose inline style contains #1a4d0d or the
+                   rgb-normalized form rgb(26, 77, 13).                       */
+                ${matchInline('',
+                    ['#1a4d0d', 'rgb(26, 77, 13)'],
+                    ['#2d7a1a', 'rgb(45, 122, 26)']
+                )} {
+                    border-color: ${t.border} !important;
+                }
+
+                /* ── Standalone 1px separator divs ─────────────────────── */
                 ${desc('div[style*="height: 1px"]')} {
                     background: ${t.border} !important;
                 }
@@ -6611,6 +6624,17 @@
                 )} {
                     background: ${t.bgInput} !important;
                     border-color: ${t.border} !important;
+                }
+
+                /* ── Accent-colored borders (#4CAF50 / rgba(76,175,80,…)) ─
+                   Character switcher active card, world-switch buttons etc. */
+                ${matchInline('',
+                    ['#4CAF50', 'rgb(76, 175, 80)']
+                )} {
+                    border-color: ${t.accent} !important;
+                }
+                ${PANEL_IDS.map(id => `${id} [style*="rgba(76, 175, 80"]`).join(', ')} {
+                    border-color: ${t.accent} !important;
                 }
 
                 /* ── Toggle sliders (round span, border-radius:24px) ───────
