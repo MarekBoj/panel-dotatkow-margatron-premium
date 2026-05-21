@@ -6682,14 +6682,25 @@
                 }
 
                 /* ── Hover effects ─────────────────────────────────────────
-                   JS mouseenter handlers re-set inline background to a
-                   different shade, breaking [style*="rgb(...)"] selectors.
-                   We use :hover with a selector that STAYS true during hover
-                   (the border-color #1a4d0d doesn't change on hover).        */
+                   Strategy A: :hover on elements whose border stays #1a4d0d
+                   (addon rows, settings rows — border doesn't change on hover) */
                 ${PANEL_IDS.map(id => `${id} [style*="rgb(26, 77, 13)"]:hover`).join(', ')} {
                     background: ${t.bgDark} !important;
                 }
                 ${PANEL_IDS.map(id => `${id} [style*="#1a4d0d"]:hover`).join(', ')} {
+                    background: ${t.bgDark} !important;
+                }
+
+                /* ── Hover effects strategy B: match the HOVER-STATE color ──
+                   NPC/Items/Players rows have rank-specific border colors (not
+                   #1a4d0d), so strategy A doesn't apply to them. On mouseenter
+                   JS sets background: '#0a2505' — match that color directly.
+                   CSS !important overrides the inline hover-state value.      */
+                ${matchInline('', ['#0a2505', 'rgb(10, 37, 5)'])} {
+                    background: ${t.bgDark} !important;
+                }
+                /* Minutnik charRow hover uses an rgba tint */
+                ${PANEL_IDS.map(id => `${id} [style*="rgba(76, 175, 80, 0.15"]`).join(', ')} {
                     background: ${t.bgDark} !important;
                 }
 
