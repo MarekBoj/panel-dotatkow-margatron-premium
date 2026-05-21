@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.1.9
+// @version      5.2.0
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -5792,23 +5792,23 @@
             const frame = (pct) => `url('${url}') ${pct}% 0 / 500% 100% no-repeat`;
             style.innerHTML = `
                 [data-item].item.unique::after, [data-item].loot.unique::after, .item.unique[data-item]::after, .loot[data-item*='"rarity":"unique"']::after {
-                    content:''; position:absolute; inset:0; pointer-events:none; z-index:100;
+                    content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
                     background: ${frame(0)};
                 }
                 [data-item].item.heroic::after, [data-item].loot.heroic::after, .item.heroic[data-item]::after, .loot[data-item*='"rarity":"heroic"']::after {
-                    content:''; position:absolute; inset:0; pointer-events:none; z-index:100;
+                    content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
                     background: ${frame(25)};
                 }
                 [data-item].item.upgraded::after, [data-item].loot.upgraded::after, .item.upgraded[data-item]::after, .loot[data-item*='"upgraded":1']::after {
-                    content:''; position:absolute; inset:0; pointer-events:none; z-index:100;
+                    content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
                     background: ${frame(50)};
                 }
                 [data-item].item.legendary::after, [data-item].loot.legendary::after, .item.legendary[data-item]::after, .loot[data-item*='"rarity":"legendary"']::after, .loot[data-item*='"legendaryBow":1']::after {
-                    content:''; position:absolute; inset:0; pointer-events:none; z-index:100;
+                    content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
                     background: ${frame(75)};
                 }
                 [data-item].item.artefact::after, [data-item].loot.artefact::after, .item.artefact[data-item]::after, .loot[data-item*='"rarity":"artefact"']::after {
-                    content:''; position:absolute; inset:0; pointer-events:none; z-index:100;
+                    content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
                     background: ${frame(100)};
                 }`;
         },
@@ -6713,6 +6713,7 @@
                 #addon-panel-toggle:hover {
                     background: ${t.bgDark} !important;
                     border-color: ${t.accent} !important;
+                    box-shadow: 0 6px 16px ${t.accent}66 !important;
                 }
 
                 /* ── Active character card (overrides GlobalStyles !important) */
@@ -6720,6 +6721,10 @@
                     background: ${t.bgInput} !important;
                     border-color: ${t.accent} !important;
                     box-shadow: 0 0 12px ${t.accent}88 !important;
+                }
+                /* Character card hover glow (JS sets inline box-shadow on mouseenter) */
+                ${PANEL_IDS.map(id => `${id} [style*="rgba(76, 175, 80, 0.3"]`).join(', ')} {
+                    box-shadow: 0 4px 12px ${t.accent}4d !important;
                 }
 
                 /* ── Text colours ───────────────────────────────────────── */
