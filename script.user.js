@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.2.2
+// @version      5.2.3
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -2517,7 +2517,7 @@
         }
     };
 
-    // ======================== AUTOHEAL ========================
+// ======================== AUTOHEAL ========================
     const AutoHeal = {
         toggle(enabled) {
             GM_setValue('autoHealEnabled', enabled);
@@ -7280,8 +7280,8 @@
              { key: 'autoLootRejectGold', label: 'Zawsze odrzucaj złoto', type: 'checkbox', default: false },
              { key: 'autoLootRejectBag', label: 'Zawsze odrzucaj torby', type: 'checkbox', default: false }
          ]},
-        { id: 'uiThemerEnabled', default: false, icon: 'https://i.imgur.com/9bZkFAn.png',
-         title: 'UI Themer', desc: 'Edytor motywu UI — modyfikuj kolory interfejsu i zapisuj własne presety.',
+        { id: 'uiThemerEnabled', default: false, icon: 'https://imgur.com/ek1t4dN.png',
+         title: 'UI Themer', desc: 'Edytor motywu UI modyfikuj kolory interfejsu i zapisuj własne presety.',
          onToggle: (e) => UIThemer.toggle(e),
          settings: [
              { key: 'openUIThemer', label: 'Edytor Motywu', type: 'button',
