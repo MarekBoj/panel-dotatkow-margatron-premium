@@ -317,8 +317,8 @@
             const marginX = (rect.width - item.offsetWidth) * 0.4;
             const marginY = (rect.height - item.offsetHeight) * 0.4;
 
-            const randomX = rect.left + marginX * (rect.width - item.offsetWidth - 2 * marginX);
-            const randomY = rect.top + marginY * (rect.height - item.offsetHeight - 2 * marginY);
+            const randomX = rect.left + marginX + Math.random() * (rect.width - item.offsetWidth - 2 * marginX);
+            const randomY = rect.top + marginY + Math.random() * (rect.height - item.offsetHeight - 2 * marginY);
 
             item.dispatchEvent(new MouseEvent('mousedown', {
                 bubbles: true, clientX: rect.left + 10, clientY: rect.top + 10
@@ -4097,10 +4097,17 @@
             } else {
                 BattleMonitor.unsubscribe(this.handleBattleEvent.bind(this));
 
+                if (this.globalInterval) {
+                    clearInterval(this.globalInterval);
+                    this.globalInterval = null;
+                }
+
                 if (this.container) {
                     this.container.remove();
                     this.container = null;
                 }
+
+                this.timersList = null;
             }
         },
 
@@ -4407,8 +4414,8 @@
             if (!GM_getValue('minutnikEnabled', false)) {
                 clearInterval(this.globalInterval);
                 this.globalInterval = null;
-                this.container.style.display = 'none';
-                this.timersList.innerHTML = '';
+                if (this.container) this.container.style.display = 'none';
+                if (this.timersList) this.timersList.innerHTML = '';
             }
         },
 
@@ -4423,6 +4430,7 @@
 
         createContainer() {
             const container = document.createElement('div');
+            container.id = 'minutnik-container';
             Object.assign(container.style, {
                 position: 'fixed', top: '15px', left: '10px', padding: '3px',
                 backgroundColor: '#0b2505', borderRadius: '8px', color: 'white',
@@ -5778,7 +5786,7 @@
         buildImageFrameCSS(style) {
             const url = GM_getValue('highlightFrameUrl', '');
             if (!url) { style.innerHTML = ''; return; }
-            // Sprite sheet: 160×32 (5 frames × 32px). Order: Unique, Heroic, Legendary, Upgraded, Artefact
+            // Sprite sheet: 160×32 (5 frames × 32px). Order: Unique, Heroic, Upgraded, Legendary, Artefact
             // background-size: 500% 100% makes each frame fill the element exactly.
             // background-position percentages: 0%, 25%, 50%, 75%, 100%
             const frame = (pct) => `url('${url}') ${pct}% 0 / 500% 100% no-repeat`;
@@ -5792,11 +5800,11 @@
                     content:''; position:absolute; inset:0; pointer-events:none; z-index:100;
                     background: ${frame(25)};
                 }
-                [data-item].item.legendary::after, [data-item].loot.legendary::after, .item.legendary[data-item]::after, .loot[data-item*='"rarity":"legendary"']::after, .loot[data-item*='"legendaryBow":1']::after {
+                [data-item].item.upgraded::after, [data-item].loot.upgraded::after, .item.upgraded[data-item]::after, .loot[data-item*='"upgraded":1']::after {
                     content:''; position:absolute; inset:0; pointer-events:none; z-index:100;
                     background: ${frame(50)};
                 }
-                [data-item].item.upgraded::after, [data-item].loot.upgraded::after, .item.upgraded[data-item]::after, .loot[data-item*='"upgraded":1']::after {
+                [data-item].item.legendary::after, [data-item].loot.legendary::after, .item.legendary[data-item]::after, .loot[data-item*='"rarity":"legendary"']::after, .loot[data-item*='"legendaryBow":1']::after {
                     content:''; position:absolute; inset:0; pointer-events:none; z-index:100;
                     background: ${frame(75)};
                 }
@@ -5863,7 +5871,7 @@
             if (currentMode === 'image') {
                 // URL input
                 const urlLabel = document.createElement('div');
-                urlLabel.textContent = 'URL sprite sheet (160×32 px — kolejność: Unikat, Heroik, Legenda, Ulepszony, Artefakt)';
+                urlLabel.textContent = 'URL sprite sheet (160×32 px — kolejność: Unikat, Heroik, Ulepszony, Legenda, Artefakt)';
                 Object.assign(urlLabel.style, { fontSize: '11px', color: '#a0a0a0', marginBottom: '6px' });
                 popup.appendChild(urlLabel);
 
@@ -5896,7 +5904,7 @@
                     border: '1px solid #1a4d0d'
                 });
 
-                const rarityLabels = ['Unikat', 'Heroik', 'Legenda', 'Ulepsz.', 'Artefakt'];
+                const rarityLabels = ['Unikat', 'Heroik', 'Ulepsz.', 'Legenda', 'Artefakt'];
                 const positions = [0, 25, 50, 75, 100];
                 const previews = rarityLabels.map((lbl, i) => {
                     const col = document.createElement('div');
@@ -6519,7 +6527,8 @@
             return `
                 #addon-panel, #settings-popup, #frame-editor-popup, #ui-themer-popup,
                 #kill-counter-panel, #npcs-on-map-panel, #items-on-map-panel,
-                #players-on-map-panel, #legend-loot-panel, #character-switcher-panel {
+                #players-on-map-panel, #legend-loot-panel, #character-switcher-panel,
+                #minutnik-container {
                     background: ${t.bgDark} !important;
                     border-color: ${t.border} !important;
                 }
