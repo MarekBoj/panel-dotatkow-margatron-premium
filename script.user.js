@@ -6637,25 +6637,23 @@
                     border-color: ${t.accent} !important;
                 }
 
-                /* ── Toggle sliders (round span, border-radius:24px) ───────
-                   Off-state uses border color; on-state uses accent.
-                   CSS !important overrides the inline background-color
-                   set by the JS updateSliderVisual handler.                 */
-                ${desc('span[style*="border-radius: 24px"]')} {
+                /* ── Toggle sliders — semantic CSS (no inline-color guessing) ─
+                   Structure: <label><input type=checkbox><span slider>
+                                                              <span circle>
+                   Using input:checked + span avoids matching inline
+                   background-color that JS keeps changing.               */
+                ${desc('input[type="checkbox"] + span[style*="border-radius: 24px"]')} {
+                    background: ${t.border} !important;
                     border-color: ${t.border} !important;
                 }
-                ${desc('span[style*="border-radius: 24px"][style*="background-color: rgb(26, 77, 13)"]')},
-                ${desc('span[style*="border-radius: 24px"][style*="background: rgb(26, 77, 13)"]')},
-                ${desc('span[style*="border-radius: 24px"][style*="background:#1a4d0d"]')},
-                ${desc('span[style*="border-radius: 24px"][style*="background: #1a4d0d"]')} {
-                    background: ${t.border} !important;
-                }
-                ${desc('span[style*="border-radius: 24px"][style*="background-color: rgb(76, 175, 80)"]')},
-                ${desc('span[style*="border-radius: 24px"][style*="background: rgb(76, 175, 80)"]')},
-                ${desc('span[style*="border-radius: 24px"][style*="background:#4CAF50"]')},
-                ${desc('span[style*="border-radius: 24px"][style*="background: #4CAF50"]')} {
+                ${desc('input[type="checkbox"]:checked + span[style*="border-radius: 24px"]')} {
                     background: ${t.accent} !important;
                     border-color: ${t.accentSecond} !important;
+                }
+
+                /* ── Checkboxes accent color (config toggles in settings) ── */
+                ${desc('input[type="checkbox"]')} {
+                    accent-color: ${t.accent} !important;
                 }
 
                 /* ── Input fields & selects in all panels ───────────────── */
@@ -6681,6 +6679,36 @@
                 ${PANEL_IDS.map(id => `${id} button[style*="rgb(16, 36, 10)"]`).join(', ')},
                 ${PANEL_IDS.map(id => `${id} button[style*="#10240a"]`).join(', ')} {
                     background: ${t.bgInput} !important;
+                }
+
+                /* ── Hover effects ─────────────────────────────────────────
+                   JS mouseenter handlers re-set inline background to a
+                   different shade, breaking [style*="rgb(...)"] selectors.
+                   We use :hover with a selector that STAYS true during hover
+                   (the border-color #1a4d0d doesn't change on hover).        */
+                ${PANEL_IDS.map(id => `${id} [style*="rgb(26, 77, 13)"]:hover`).join(', ')} {
+                    background: ${t.bgDark} !important;
+                }
+                ${PANEL_IDS.map(id => `${id} [style*="#1a4d0d"]:hover`).join(', ')} {
+                    background: ${t.bgDark} !important;
+                }
+
+                /* ── Panel-open toggle button (#addon-panel-toggle) ─────────
+                   This sits outside all panels so needs its own rules.       */
+                #addon-panel-toggle {
+                    background: ${t.bgDarker} !important;
+                    border-color: ${t.border} !important;
+                }
+                #addon-panel-toggle:hover {
+                    background: ${t.bgDark} !important;
+                    border-color: ${t.accent} !important;
+                }
+
+                /* ── Active character card (overrides GlobalStyles !important) */
+                #characters-container > div.active-character {
+                    background: ${t.bgInput} !important;
+                    border-color: ${t.accent} !important;
+                    box-shadow: 0 0 12px ${t.accent}88 !important;
                 }
 
                 /* ── Text colours ───────────────────────────────────────── */
