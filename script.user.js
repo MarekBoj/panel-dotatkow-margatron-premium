@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.1.5
+// @version      5.1.6
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
