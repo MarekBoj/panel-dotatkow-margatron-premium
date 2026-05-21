@@ -6537,6 +6537,16 @@
             ];
             const desc = (sel) => PANEL_IDS.map(id => `${id} ${sel}`).join(', ');
 
+            // Object.assign(el.style, { background: '#hex' }) normalises hex to rgb() in the DOM,
+            // so [style*="#hex"] never matches. We must include both forms.
+            const matchInline = (tag, ...pairs) =>
+                PANEL_IDS.flatMap(id =>
+                    pairs.flatMap(([hex, rgb]) => [
+                        `${id} ${tag}[style*="${hex}"]`,
+                        `${id} ${tag}[style*="${rgb}"]`
+                    ])
+                ).join(', ');
+
             return `
                 /* ── Panel shells ──────────────────────────────────────── */
                 ${ALL_PANELS} {
@@ -6562,8 +6572,13 @@
                 #addon-panel .separator, #settings-popup .separator { background: ${t.border} !important; }
                 #addon-panel .addon-row { border-color: ${t.border} !important; }
 
-                /* ── Inner rows/containers with inline bgDarker ─────────── */
-                ${PANEL_IDS.map(id => `${id} div[style*="#061d02"], ${id} div[style*="#0b2505"]`).join(', ')} {
+                /* ── Inner rows/containers with inline bgDark / bgDarker ───
+                   Matches both the original hex literal AND the rgb() form
+                   that the browser writes when styles are set via JS.        */
+                ${matchInline('div',
+                    ['#061d02', 'rgb(6, 29, 2)'],
+                    ['#0b2505', 'rgb(11, 37, 5)']
+                )} {
                     background: ${t.bgDarker} !important;
                     border-color: ${t.border} !important;
                 }
@@ -6590,7 +6605,9 @@
 
                 /* ── Text colours ───────────────────────────────────────── */
                 #addon-panel *, #settings-popup *, #frame-editor-popup * { color: ${t.text}; }
-                ${PANEL_IDS.map(id => `${id} [style*="#a0a0a0"]`).join(', ')} {
+                ${matchInline('',
+                    ['#a0a0a0', 'rgb(160, 160, 160)']
+                )} {
                     color: ${t.textSub} !important;
                 }
             `;
