@@ -5791,7 +5791,6 @@
             // background-position percentages: 0%, 25%, 50%, 75%, 100%
             const frame = (pct) => `url('${url}') ${pct}% 0 / 500% 100% no-repeat`;
             style.innerHTML = `
-                [data-item].item, [data-item].loot, .item[data-item], .loot[data-item] { position: relative !important; }
                 [data-item].item.unique::after, [data-item].loot.unique::after, .item.unique[data-item]::after, .loot[data-item*='"rarity":"unique"']::after {
                     content:''; position:absolute; inset:0; pointer-events:none; z-index:100;
                     background: ${frame(0)};
@@ -6524,36 +6523,76 @@
         },
 
         buildCSS(t) {
-            return `
-                #addon-panel, #settings-popup, #frame-editor-popup, #ui-themer-popup,
+            const ALL_PANELS = `#addon-panel, #settings-popup, #frame-editor-popup, #ui-themer-popup,
                 #kill-counter-panel, #npcs-on-map-panel, #items-on-map-panel,
                 #players-on-map-panel, #legend-loot-panel, #character-switcher-panel,
-                #minutnik-container {
+                #minutnik-container`;
+
+            // Expand panel list for descendant selectors (CSS doesn't allow "a, b child" shorthand)
+            const PANEL_IDS = [
+                '#addon-panel', '#settings-popup', '#frame-editor-popup', '#ui-themer-popup',
+                '#kill-counter-panel', '#npcs-on-map-panel', '#items-on-map-panel',
+                '#players-on-map-panel', '#legend-loot-panel', '#character-switcher-panel',
+                '#minutnik-container'
+            ];
+            const desc = (sel) => PANEL_IDS.map(id => `${id} ${sel}`).join(', ');
+
+            return `
+                /* ── Panel shells ──────────────────────────────────────── */
+                ${ALL_PANELS} {
                     background: ${t.bgDark} !important;
                     border-color: ${t.border} !important;
+                    scrollbar-color: ${t.border} ${t.bgDarker};
+                    scrollbar-width: thin;
                 }
+
+                /* ── Webkit scrollbars for all panels ──────────────────── */
+                ${desc('::-webkit-scrollbar-thumb')} {
+                    background: ${t.border} !important;
+                }
+                ${desc('::-webkit-scrollbar-thumb:hover')} {
+                    background: ${t.accentSecond} !important;
+                }
+                ${desc('::-webkit-scrollbar-track')} {
+                    background: ${t.bgDarker} !important;
+                }
+
+                /* ── Panel structural elements ─────────────────────────── */
                 #addon-panel .panel-header { background: ${t.bgDarker} !important; }
                 #addon-panel .separator, #settings-popup .separator { background: ${t.border} !important; }
                 #addon-panel .addon-row { border-color: ${t.border} !important; }
-                #settings-popup > div[style*="background"], #settings-popup div[style*="#061d02"] {
-                    background: ${t.bgDarker} !important; border-color: ${t.border} !important;
+
+                /* ── Inner rows/containers with inline bgDarker ─────────── */
+                ${PANEL_IDS.map(id => `${id} div[style*="#061d02"], ${id} div[style*="#0b2505"]`).join(', ')} {
+                    background: ${t.bgDarker} !important;
+                    border-color: ${t.border} !important;
                 }
-                #addon-panel input, #settings-popup input[type="text"],
-                #settings-popup input[type="number"], #settings-popup select {
-                    background: ${t.bgInput} !important; border-color: ${t.border} !important;
+
+                /* ── Input fields & selects in all panels ───────────────── */
+                ${desc('input[type="text"]')},
+                ${desc('input[type="number"]')},
+                ${desc('input[type="color"]')},
+                ${desc('select')} {
+                    background: ${t.bgInput} !important;
+                    border-color: ${t.border} !important;
                     color: ${t.text} !important;
                 }
-                #addon-panel button, #settings-popup button {
+
+                /* ── Buttons (skip explicit danger/red buttons) ─────────── */
+                #addon-panel button:not([style*="255,0,0"]):not([style*="#ff0000"]),
+                #settings-popup button:not([style*="255,0,0"]):not([style*="#ff0000"]) {
                     background: ${t.accent} !important;
                 }
-                #addon-panel button:hover, #settings-popup button:hover {
+                #addon-panel button:not([style*="255,0,0"]):not([style*="#ff0000"]):hover,
+                #settings-popup button:not([style*="255,0,0"]):not([style*="#ff0000"]):hover {
                     background: ${t.accentHover} !important;
                 }
+
+                /* ── Text colours ───────────────────────────────────────── */
                 #addon-panel *, #settings-popup *, #frame-editor-popup * { color: ${t.text}; }
-                #addon-panel [style*="#a0a0a0"], #settings-popup [style*="#a0a0a0"] { color: ${t.textSub} !important; }
-                #addon-panel ::-webkit-scrollbar-thumb { background: ${t.border} !important; }
-                #addon-panel ::-webkit-scrollbar-thumb:hover { background: ${t.accentSecond} !important; }
-                #addon-panel ::-webkit-scrollbar-track { background: ${t.bgDarker} !important; }
+                ${PANEL_IDS.map(id => `${id} [style*="#a0a0a0"]`).join(', ')} {
+                    color: ${t.textSub} !important;
+                }
             `;
         },
 
