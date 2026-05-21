@@ -317,8 +317,8 @@
             const marginX = (rect.width - item.offsetWidth) * 0.4;
             const marginY = (rect.height - item.offsetHeight) * 0.4;
 
-            const randomX = rect.left + marginX + Math.random() * (rect.width - item.offsetWidth - 2 * marginX);
-            const randomY = rect.top + marginY + Math.random() * (rect.height - item.offsetHeight - 2 * marginY);
+            const randomX = rect.left + marginX * (rect.width - item.offsetWidth - 2 * marginX);
+            const randomY = rect.top + marginY * (rect.height - item.offsetHeight - 2 * marginY);
 
             item.dispatchEvent(new MouseEvent('mousedown', {
                 bubbles: true, clientX: rect.left + 10, clientY: rect.top + 10
