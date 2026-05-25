@@ -6045,34 +6045,53 @@
                     border: '1px solid #1a4d0d'
                 });
 
+                // Each frame is shown by clipping a full-width <img> inside a 32×32 overflow:hidden
+                // container, offsetting the image left by i*32px to reveal the correct sprite column.
+                // This avoids CSS background-image conflicts with other injected styles.
                 const rarityLabels = ['Unikat', 'Heroik', 'Ulepsz.', 'Legenda', 'Artefakt'];
-                const positions = [0, 25, 50, 75, 100];
-                const previews = rarityLabels.map((lbl, i) => {
+                const frameImgs = rarityLabels.map((lbl, i) => {
                     const col = document.createElement('div');
                     Object.assign(col.style, { textAlign: 'center', flex: '1' });
+
                     const box = document.createElement('div');
                     Object.assign(box.style, {
                         width: '32px', height: '32px', margin: '0 auto 4px',
                         border: '1px solid #1a4d0d', borderRadius: '2px',
-                        backgroundImage: urlInput.value ? `url('${urlInput.value}')` : 'none',
-                        backgroundPosition: `${positions[i]}% 0`,
-                        backgroundSize: '500% 100%',
-                        backgroundRepeat: 'no-repeat',
-                        backgroundColor: '#10240a'
+                        backgroundColor: '#10240a',
+                        overflow: 'hidden', position: 'relative'
                     });
+
+                    const img = document.createElement('img');
+                    Object.assign(img.style, {
+                        position: 'absolute', top: '0',
+                        left: `-${i * 32}px`,
+                        width: '160px', height: '32px',
+                        imageRendering: 'pixelated',
+                        display: urlInput.value ? 'block' : 'none'
+                    });
+                    if (urlInput.value) img.src = urlInput.value;
+                    box.appendChild(img);
+
                     const lab = document.createElement('div');
                     lab.textContent = lbl;
                     Object.assign(lab.style, { fontSize: '9px', color: '#a0a0a0' });
+
                     col.appendChild(box);
                     col.appendChild(lab);
                     previewRow.appendChild(col);
-                    return box;
+                    return img;
                 });
                 popup.appendChild(previewRow);
 
                 const updatePreview = (url) => {
-                    previews.forEach(box => {
-                        box.style.backgroundImage = url ? `url('${url}')` : 'none';
+                    frameImgs.forEach(img => {
+                        if (url) {
+                            img.src = url;
+                            img.style.display = 'block';
+                        } else {
+                            img.src = '';
+                            img.style.display = 'none';
+                        }
                     });
                 };
             }
