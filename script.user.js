@@ -5232,6 +5232,7 @@
         showAlert(entities) {
             if (this.alertDisplayed || entities.length === 0) return;
             this.alertDisplayed = true;
+            const t = UIThemer.getTheme();
 
             const alertDiv = document.createElement('div');
             Object.assign(alertDiv.style, {
@@ -5239,13 +5240,13 @@
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-                background: '#0b2505',
-                color: 'white',
+                background: t.bgDark,
+                color: t.text,
                 padding: '20px',
                 borderRadius: '12px',
                 textAlign: 'center',
                 zIndex: '10001',
-                border: '2px solid #1a4d0d',
+                border: `2px solid ${t.border}`,
                 boxShadow: '0 4px 20px rgba(0,0,0,0.7)',
                 maxWidth: '80vw',
                 fontFamily: 'times-new-roman'
@@ -5265,7 +5266,7 @@
                 fontWeight: 'bold',
                 marginBottom: '15px',
                 paddingBottom: '10px',
-                borderBottom: '1px solid #1a4d0d'
+                borderBottom: `1px solid ${t.border}`
             });
             header.textContent = title;
             alertDiv.appendChild(header);
@@ -5307,24 +5308,25 @@
         },
 
         createEntityCard(entity) {
+            const t = UIThemer.getTheme();
             const card = document.createElement('div');
             Object.assign(card.style, {
                 width: '140px',
                 padding: '12px',
-                background: '#061d02',
+                background: t.bgDarker,
                 borderRadius: '8px',
-                border: '1px solid #1a4d0d',
+                border: `1px solid ${t.border}`,
                 textAlign: 'center',
                 transition: 'all 0.2s ease'
             });
 
             card.addEventListener('mouseenter', () => {
-                card.style.border = '1px solid #3ebc35';
+                card.style.border = `1px solid ${t.accent}`;
                 card.style.transform = 'translateY(-6px)';
             });
 
             card.addEventListener('mouseleave', () => {
-                card.style.border = '1px solid #1a4d0d';
+                card.style.border = `1px solid ${t.border}`;
                 card.style.transform = 'translateY(0)';
             });
 
@@ -5338,7 +5340,7 @@
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: '#10240a',
+                background: t.bgInput,
                 borderRadius: '6px',
                 marginBottom: '8px'
             });
@@ -5393,14 +5395,15 @@
         },
 
         createCopyButton(entities, alertDiv) {
+            const t = UIThemer.getTheme();
             const btn = document.createElement('button');
             btn.textContent = 'Kopiuj i zamknij';
             Object.assign(btn.style, {
                 padding: '10px 20px',
-                background: '#1a4d0d',
-                border: '1px solid #2d7a1a',
+                background: t.accentSecond,
+                border: `1px solid ${t.accentSecond}`,
                 borderRadius: '8px',
-                color: 'white',
+                color: t.text,
                 fontSize: '13px',
                 fontWeight: '600',
                 cursor: 'pointer',
@@ -5409,12 +5412,12 @@
             });
 
             btn.addEventListener('mouseenter', () => {
-                btn.style.background = '#2d7a1a';
+                btn.style.background = t.accent;
                 btn.style.transform = 'translateY(-2px)';
             });
 
             btn.addEventListener('mouseleave', () => {
-                btn.style.background = '#1a4d0d';
+                btn.style.background = t.accentSecond;
                 btn.style.transform = 'translateY(0)';
             });
 
@@ -5474,14 +5477,15 @@
         // =================== STRZAŁKI DO HEROSÓW ===================
 
         addArrowStyles() {
-            if (document.getElementById('hero-arrow-styles')) return;
+            document.getElementById('hero-arrow-styles')?.remove();
+            const t = UIThemer.getTheme();
 
             const style = document.createElement('style');
             style.id = 'hero-arrow-styles';
             style.innerHTML = `
                 .hero-direction-arrow {
                     opacity: 1;
-                    filter: drop-shadow(0 0 8px rgba(76, 175, 80, 0.6));
+                    filter: drop-shadow(0 0 8px ${t.accent}99);
                     animation: arrow-pulse 2s ease-in-out infinite;
                     transition: opacity 0.25s ease-out, transform 0.25s ease-out;
                 }
@@ -5494,11 +5498,11 @@
                 @keyframes arrow-pulse {
                     0%, 100% {
                         opacity: 1;
-                        filter: drop-shadow(0 0 8px rgba(76, 175, 80, 0.6));
+                        filter: drop-shadow(0 0 8px ${t.accent}99);
                     }
                     50% {
                         opacity: 0.7;
-                        filter: drop-shadow(0 0 15px rgba(76, 175, 80, 0.9));
+                        filter: drop-shadow(0 0 15px ${t.accent}e6);
                     }
                 }
             `;
@@ -5760,20 +5764,26 @@
             const t = Math.max(0, GM_getValue('highlightBorderThickness', 1));
             const b = Math.max(0, GM_getValue('highlightBlurInner', 0));
             style.innerHTML = `
-                [data-item].item.heroic, [data-item].loot.heroic, .item.heroic, .loot[data-item*='"rarity":"heroic"'] {
+                [data-item].item.heroic, [data-item].loot.heroic, .item.heroic,
+                .loot[data-item*='"rarity":"heroic"'], img[data-item*='"rarity":"heroic"'] {
                     box-shadow: inset 0 0 ${b}px ${t}px ${colors.heroic}, 0 0 1px 0px ${colors.heroic} !important;
                 }
-                [data-item].item.unique, [data-item].loot.unique, .item.unique, .loot[data-item*='"rarity":"unique"'] {
+                [data-item].item.unique, [data-item].loot.unique, .item.unique,
+                .loot[data-item*='"rarity":"unique"'], img[data-item*='"rarity":"unique"'] {
                     box-shadow: inset 0 0 ${b}px ${t}px ${colors.unique}, 0 0 1px 0px ${colors.unique} !important;
                 }
-                [data-item].item.legendary, [data-item].loot.legendary, .item.legendary, .loot[data-item*='"rarity":"legendary"'], .loot[data-item*='"legendaryBow":1'] {
+                [data-item].item.legendary, [data-item].loot.legendary, .item.legendary,
+                .loot[data-item*='"rarity":"legendary"'], .loot[data-item*='"legendaryBow":1'],
+                img[data-item*='"rarity":"legendary"'] {
                     box-shadow: inset 0 0 ${b}px ${t}px ${colors.legendary}, 0 0 4px 0px ${colors.legendary} !important;
                     animation: legendary-pulse 12s infinite;
                 }
-                [data-item].item.upgraded, [data-item].loot.upgraded, .item.upgraded, .loot[data-item*='"upgraded":1'] {
+                [data-item].item.upgraded, [data-item].loot.upgraded, .item.upgraded,
+                .loot[data-item*='"upgraded":1'], img[data-item*='"rarity":"upgraded"'] {
                     box-shadow: inset 0 0 ${b}px ${t}px ${colors.upgraded}, 0 0 1px 0px ${colors.upgraded} !important;
                 }
-                [data-item].item.artefact, [data-item].loot.artefact, .item.artefact, .loot[data-item*='"rarity":"artefact"'] {
+                [data-item].item.artefact, [data-item].loot.artefact, .item.artefact,
+                .loot[data-item*='"rarity":"artefact"'], img[data-item*='"rarity":"artefact"'] {
                     box-shadow: inset 0 0 ${b}px ${t}px ${colors.artefact}, 0 0 6px 0px ${colors.artefact} !important;
                     animation: artefact-pulse 12s infinite;
                 }
@@ -5795,29 +5805,57 @@
             // background-position percentages: 0%, 25%, 50%, 75%, 100%
             const frame = (pct) => `url('${url}') ${pct}% 0 / 500% 100% no-repeat`;
             style.innerHTML = `
-                [data-item].item.unique::after, [data-item].loot.unique::after, .item.unique[data-item]::after, .loot[data-item*='"rarity":"unique"']::after {
+                /* position:relative needed so ::after inset:0 is anchored to the item box */
+                [data-item].item.unique,  [data-item].item.heroic,
+                [data-item].item.upgraded,[data-item].item.legendary,
+                [data-item].item.artefact,
+                [data-item].loot.unique,  [data-item].loot.heroic,
+                [data-item].loot.upgraded,[data-item].loot.legendary,
+                [data-item].loot.artefact,
+                .item.unique, .item.heroic, .item.upgraded, .item.legendary, .item.artefact,
+                .auction-item.unique, .auction-item.heroic, .auction-item.upgraded,
+                .auction-item.legendary, .auction-item.artefact {
+                    position: relative !important;
+                }
+                /* Unique */
+                [data-item].item.unique::after, [data-item].loot.unique::after,
+                .loot[data-item*='"rarity":"unique"']::after,
+                .item.unique::after, .auction-item.unique::after {
                     content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
                     background: ${frame(0)};
                 }
-                [data-item].item.heroic::after, [data-item].loot.heroic::after, .item.heroic[data-item]::after, .loot[data-item*='"rarity":"heroic"']::after {
+                /* Heroic */
+                [data-item].item.heroic::after, [data-item].loot.heroic::after,
+                .loot[data-item*='"rarity":"heroic"']::after,
+                .item.heroic::after, .auction-item.heroic::after {
                     content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
                     background: ${frame(25)};
                 }
-                [data-item].item.upgraded::after, [data-item].loot.upgraded::after, .item.upgraded[data-item]::after, .loot[data-item*='"upgraded":1']::after {
+                /* Upgraded */
+                [data-item].item.upgraded::after, [data-item].loot.upgraded::after,
+                .loot[data-item*='"upgraded":1']::after,
+                .item.upgraded::after, .auction-item.upgraded::after {
                     content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
                     background: ${frame(50)};
                 }
-                [data-item].item.legendary::after, [data-item].loot.legendary::after, .item.legendary[data-item]::after, .loot[data-item*='"rarity":"legendary"']::after, .loot[data-item*='"legendaryBow":1']::after {
+                /* Legendary */
+                [data-item].item.legendary::after, [data-item].loot.legendary::after,
+                .loot[data-item*='"rarity":"legendary"']::after, .loot[data-item*='"legendaryBow":1']::after,
+                .item.legendary::after, .auction-item.legendary::after {
                     content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
                     background: ${frame(75)};
                 }
-                [data-item].item.artefact::after, [data-item].loot.artefact::after, .item.artefact[data-item]::after, .loot[data-item*='"rarity":"artefact"']::after {
+                /* Artefact */
+                [data-item].item.artefact::after, [data-item].loot.artefact::after,
+                .loot[data-item*='"rarity":"artefact"']::after,
+                .item.artefact::after, .auction-item.artefact::after {
                     content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
                     background: ${frame(100)};
                 }
                 /* Suppress the element's own background-image so the JS-injected
                    <img> child (z-index:2) becomes the sole visible item icon.
-                   The ::after frame at z-index:1 sits between bg and icon. */
+                   Only applies to items that carry the bg-image directly (data-item on the div).
+                   Items with <img data-item> children keep their native <img> display. */
                 [data-item].item.unique,  [data-item].item.heroic,
                 [data-item].item.upgraded,[data-item].item.legendary,
                 [data-item].item.artefact,
