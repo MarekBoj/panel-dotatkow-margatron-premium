@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.2.4
+// @version      5.2.6
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -5804,66 +5804,77 @@
             // background-size: 500% 100% makes each frame fill the element exactly.
             // background-position percentages: 0%, 25%, 50%, 75%, 100%
             const frame = (pct) => `url('${url}') ${pct}% 0 / 500% 100% no-repeat`;
-            style.innerHTML = `
-                /* position:relative needed so ::after inset:0 is anchored to the item box */
+            // IMPORTANT: Do NOT add position:relative to generic .item.X — inventory items
+            // use position:absolute for grid placement and would break if overridden.
+            // Only safe to force on: [data-item] divs (bag items), .auction-item, .item-display,
+            // .item-preview, and .loot>.item (these never use absolute grid positioning).
+            const SAFE_POS = `
                 [data-item].item.unique,  [data-item].item.heroic,
                 [data-item].item.upgraded,[data-item].item.legendary,
                 [data-item].item.artefact,
                 [data-item].loot.unique,  [data-item].loot.heroic,
                 [data-item].loot.upgraded,[data-item].loot.legendary,
                 [data-item].loot.artefact,
-                .item.unique, .item.heroic, .item.upgraded, .item.legendary, .item.artefact,
-                .auction-item.unique, .auction-item.heroic, .auction-item.upgraded,
-                .auction-item.legendary, .auction-item.artefact {
-                    position: relative !important;
-                }
+                .auction-item.unique, .auction-item.heroic,
+                .auction-item.upgraded, .auction-item.legendary, .auction-item.artefact,
+                .item-display.unique,  .item-display.heroic,
+                .item-display.upgraded,.item-display.legendary,  .item-display.artefact,
+                .item-preview.unique,  .item-preview.heroic,
+                .item-preview.upgraded,.item-preview.legendary,  .item-preview.artefact,
+                .loot .item.unique, .loot .item.heroic,
+                .loot .item.upgraded, .loot .item.legendary, .loot .item.artefact`;
+            const after = (pct, extra = '') => `
+                content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
+                background: ${frame(pct)}; ${extra}`;
+            style.innerHTML = `
+                /* position:relative so ::after inset:0 anchors to the item box */
+                ${SAFE_POS} { position: relative !important; }
+
                 /* Unique */
                 [data-item].item.unique::after, [data-item].loot.unique::after,
                 .loot[data-item*='"rarity":"unique"']::after,
-                .item.unique::after, .auction-item.unique::after {
-                    content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
-                    background: ${frame(0)};
-                }
+                .auction-item.unique::after, .item-display.unique::after,
+                .item-preview.unique::after, .loot .item.unique::after
+                { ${after(0)} }
+
                 /* Heroic */
                 [data-item].item.heroic::after, [data-item].loot.heroic::after,
                 .loot[data-item*='"rarity":"heroic"']::after,
-                .item.heroic::after, .auction-item.heroic::after {
-                    content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
-                    background: ${frame(25)};
-                }
+                .auction-item.heroic::after, .item-display.heroic::after,
+                .item-preview.heroic::after, .loot .item.heroic::after
+                { ${after(25)} }
+
                 /* Upgraded */
                 [data-item].item.upgraded::after, [data-item].loot.upgraded::after,
                 .loot[data-item*='"upgraded":1']::after,
-                .item.upgraded::after, .auction-item.upgraded::after {
-                    content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
-                    background: ${frame(50)};
-                }
+                .auction-item.upgraded::after, .item-display.upgraded::after,
+                .item-preview.upgraded::after, .loot .item.upgraded::after
+                { ${after(50)} }
+
                 /* Legendary */
                 [data-item].item.legendary::after, [data-item].loot.legendary::after,
-                .loot[data-item*='"rarity":"legendary"']::after, .loot[data-item*='"legendaryBow":1']::after,
-                .item.legendary::after, .auction-item.legendary::after {
-                    content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
-                    background: ${frame(75)};
-                }
+                .loot[data-item*='"rarity":"legendary"']::after,
+                .loot[data-item*='"legendaryBow":1']::after,
+                .auction-item.legendary::after, .item-display.legendary::after,
+                .item-preview.legendary::after, .loot .item.legendary::after
+                { ${after(75)} }
+
                 /* Artefact */
                 [data-item].item.artefact::after, [data-item].loot.artefact::after,
                 .loot[data-item*='"rarity":"artefact"']::after,
-                .item.artefact::after, .auction-item.artefact::after {
-                    content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
-                    background: ${frame(100)};
-                }
-                /* Suppress the element's own background-image so the JS-injected
-                   <img> child (z-index:2) becomes the sole visible item icon.
-                   Only applies to items that carry the bg-image directly (data-item on the div).
-                   Items with <img data-item> children keep their native <img> display. */
+                .auction-item.artefact::after, .item-display.artefact::after,
+                .item-preview.artefact::after, .loot .item.artefact::after
+                { ${after(100)} }
+
+                /* Suppress the background-image on [data-item] divs so the JS-injected
+                   <img> child (z-index:2, above the ::after frame at z-index:1) is the
+                   sole visible icon. Non-[data-item] containers already use an <img> child. */
                 [data-item].item.unique,  [data-item].item.heroic,
                 [data-item].item.upgraded,[data-item].item.legendary,
                 [data-item].item.artefact,
                 [data-item].loot.unique,  [data-item].loot.heroic,
                 [data-item].loot.upgraded,[data-item].loot.legendary,
-                [data-item].loot.artefact {
-                    background-image: none !important;
-                }`;
+                [data-item].loot.artefact { background-image: none !important; }`;
         },
 
         removeStyles() {
