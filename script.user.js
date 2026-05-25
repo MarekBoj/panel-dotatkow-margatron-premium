@@ -5872,7 +5872,28 @@
                 [data-item].item.artefact,
                 [data-item].loot.unique,  [data-item].loot.heroic,
                 [data-item].loot.upgraded,[data-item].loot.legendary,
-                [data-item].loot.artefact { background-image: none !important; }`;
+                [data-item].loot.artefact { background-image: none !important; }
+
+                /* For non-inventory contexts (loot/auction/mail/preview) the item icon
+                   is a native <img> child. Raise it above the ::after frame (z-index:1)
+                   by giving it position:relative + z-index:2.
+                   Deliberately excludes [data-item].item.X so the JS-injected icons
+                   in the inventory bag keep their inline position:absolute intact. */
+                .auction-item.unique   > img, .auction-item.heroic   > img,
+                .auction-item.upgraded > img, .auction-item.legendary > img,
+                .auction-item.artefact > img,
+                .item-display.unique   > img, .item-display.heroic   > img,
+                .item-display.upgraded > img, .item-display.legendary > img,
+                .item-display.artefact > img,
+                .item-preview.unique   > img, .item-preview.heroic   > img,
+                .item-preview.upgraded > img, .item-preview.legendary > img,
+                .item-preview.artefact > img,
+                .loot .item.unique   > img, .loot .item.heroic   > img,
+                .loot .item.upgraded > img, .loot .item.legendary > img,
+                .loot .item.artefact > img {
+                    position: relative !important;
+                    z-index: 2 !important;
+                }`;
         },
 
         removeStyles() {
