@@ -5804,14 +5804,12 @@
             // background-size: 500% 100% makes each frame fill the element exactly.
             // background-position percentages: 0%, 25%, 50%, 75%, 100%
             const frame = (pct) => `url('${url}') ${pct}% 0 / 500% 100% no-repeat`;
-            // IMPORTANT: Do NOT add position:relative to generic .item.X — inventory items
-            // use position:absolute for grid placement and would break if overridden.
-            // Only safe to force on: [data-item] divs (bag items), .auction-item, .item-display,
-            // .item-preview, and .loot>.item (these never use absolute grid positioning).
+            // Inventory bag items ([data-item].item.X) are already position:absolute for
+            // grid cell placement — that makes them a containing block for ::after, so we
+            // must NOT override their position. ::after inset:0 will anchor correctly.
+            // We only need to force position:relative on elements that are position:static:
+            // loot/auction/mail/preview containers that use normal flow layout.
             const SAFE_POS = `
-                [data-item].item.unique,  [data-item].item.heroic,
-                [data-item].item.upgraded,[data-item].item.legendary,
-                [data-item].item.artefact,
                 [data-item].loot.unique,  [data-item].loot.heroic,
                 [data-item].loot.upgraded,[data-item].loot.legendary,
                 [data-item].loot.artefact,
