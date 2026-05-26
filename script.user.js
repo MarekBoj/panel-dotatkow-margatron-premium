@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.3.2
+// @version      5.3.3
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -7387,7 +7387,6 @@
         setupDragTracking() {
             if (this._dragTracking) return;
             this._dragTracking = true;
-            // Track which item the user last pressed mousedown on
             document.addEventListener('mousedown', (e) => {
                 const item = e.target.closest('[data-item].item');
                 if (item) this._draggedItem = item;
@@ -7421,7 +7420,6 @@
                 this.panel.style.left = savedPos.left + 'px';
             }
 
-            // Header: icon + title
             const header = document.createElement('div');
             Object.assign(header.style, {
                 display: 'flex', alignItems: 'center', gap: '6px',
@@ -7429,7 +7427,7 @@
             });
 
             const icon = document.createElement('img');
-            icon.src = 'https://imgur.com/2jMJMsO.png';
+            icon.src = 'https://imgur.com/gpRfL9H.png';
             Object.assign(icon.style, { width: '18px', height: '18px', borderRadius: '3px' });
 
             const titleEl = document.createElement('span');
@@ -7440,23 +7438,21 @@
             header.appendChild(titleEl);
             this.panel.appendChild(header);
 
-            // Divider
             const divider = document.createElement('div');
             Object.assign(divider.style, {
-                borderTop: `1px dashed ${t.border}`, marginBottom: '8px'
+                borderTop: `1px solid ${t.border}`, marginBottom: '8px'
             });
+            
             this.panel.appendChild(divider);
 
-            // Drop slot
             const slotLabel = document.createElement('div');
-            slotLabel.textContent = 'Slot strzał:';
             Object.assign(slotLabel.style, { fontSize: '10px', color: t.textSub, marginBottom: '4px' });
             this.panel.appendChild(slotLabel);
 
             const slot = document.createElement('div');
             slot.id = 'arrow-refill-drop-slot';
             Object.assign(slot.style, {
-                width: '40px', height: '40px', margin: '0 auto',
+                width: '32px', height: '32px', margin: '0 auto',
                 border: `2px dashed ${t.border}`,
                 borderRadius: '4px', background: t.bgInput,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -7470,7 +7466,6 @@
             slot.appendChild(slotHint);
             this.panel.appendChild(slot);
 
-            // Status label
             const statusEl = document.createElement('div');
             statusEl.id = 'arrow-refill-status';
             Object.assign(statusEl.style, {
@@ -7478,10 +7473,8 @@
             });
             this.panel.appendChild(statusEl);
 
-            // Render saved arrow in slot if any
             this.updateSlotDisplay(slot, slotHint, statusEl);
 
-            // Drop zone: accept on mouseup over the slot
             slot.addEventListener('mouseup', (e) => {
                 const item = this._draggedItem;
                 if (!item) return;
@@ -7491,7 +7484,6 @@
                 const baseItemId = inner?.baseItemId || inner?.id;
                 if (!baseItemId) return;
 
-                // Extract icon src from the item's background-image or <img> child
                 let src = '';
                 const imgChild = item.querySelector('img.highlight-frame-icon') || item.querySelector('img');
                 if (imgChild) {
