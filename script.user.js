@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.3.3
+// @version      5.3.4
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -7829,7 +7829,7 @@
         {
             id: 'autoArrowRefillEnabled',
             default: false,
-            icon: 'https://imgur.com/2jMJMsO.png',
+            icon: 'https://i.imgur.com/gpRfL9H.png',
             title: 'Auto Strzały',
             desc: 'Automatycznie uzupełnia strzały w ekwipunku z torby gdy skończą się w slocie.',
             onToggle: (e) => AutoArrowRefill.toggle(e)
