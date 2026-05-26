@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.3.4
+// @version      5.3.5
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -6861,14 +6861,14 @@
             const ALL_PANELS = `#addon-panel, #settings-popup, #frame-editor-popup, #ui-themer-popup,
                 #kill-counter-panel, #npcs-on-map-panel, #items-on-map-panel,
                 #players-on-map-panel, #legend-loot-panel, #character-switcher-panel,
-                #minutnik-container`;
+                #minutnik-container, #auto-arrow-refill-panel`;
 
             // Expand panel list for descendant selectors (CSS doesn't allow "a, b child" shorthand)
             const PANEL_IDS = [
                 '#addon-panel', '#settings-popup', '#frame-editor-popup', '#ui-themer-popup',
                 '#kill-counter-panel', '#npcs-on-map-panel', '#items-on-map-panel',
                 '#players-on-map-panel', '#legend-loot-panel', '#character-switcher-panel',
-                '#minutnik-container'
+                '#minutnik-container', '#auto-arrow-refill-panel'
             ];
             const desc = (sel) => PANEL_IDS.map(id => `${id} ${sel}`).join(', ');
 
@@ -7360,7 +7360,8 @@
     const AutoArrowRefill = {
         panel: null,
         STORAGE_KEY: 'autoArrowRefillPos',
-        savedArrow: null,   // { baseItemId, src, name, rarity }
+        savedArrow: null,       // { baseItemId, src, name, rarity }
+        currentProfession: null,
         _draggedItem: null,
         _dragTracking: false,
 
@@ -7376,12 +7377,38 @@
         },
 
         init() {
-            if (!this.panel) this.createPanel();
+            // Load saved arrow BEFORE creating panel so updateSlotDisplay has data
             const saved = GM_getValue('autoArrowRefillItem', '');
             if (saved) {
                 try { this.savedArrow = JSON.parse(saved); } catch(e) { this.savedArrow = null; }
             }
+            if (!this.panel) this.createPanel();
             this.setupDragTracking();
+            this.fetchProfession();
+        },
+
+        async fetchProfession() {
+            try {
+                const resCurrent = await fetch(CONFIG.API.CURRENTCHARACTER, {
+                    credentials: 'include',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!resCurrent.ok) return;
+                const gameInfo = await resCurrent.json();
+                const resChars = await fetch(CONFIG.API.CHARACTERS, {
+                    credentials: 'include',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!resChars.ok) return;
+                const chars = await resChars.json();
+                const current = chars.find(c => c.id === gameInfo.characterId);
+                if (current) {
+                    this.currentProfession = current.profession;
+                    console.log('[AutoArrowRefill] Profesja postaci:', current.profession);
+                }
+            } catch(e) {
+                console.error('[AutoArrowRefill] Błąd pobierania profesji:', e);
+            }
         },
 
         setupDragTracking() {
@@ -7483,6 +7510,12 @@
                 const inner = data.schema?.inner;
                 const baseItemId = inner?.baseItemId || inner?.id;
                 if (!baseItemId) return;
+
+                // Only accept items with category 'arrows'
+                if ((inner?.category || '').toLowerCase() !== 'arrows') {
+                    MessageCanvas.show('Błąd slotu', 'To nie są strzały!', '#ff4444');
+                    return;
+                }
 
                 let src = '';
                 const imgChild = item.querySelector('img.highlight-frame-icon') || item.querySelector('img');
@@ -7588,6 +7621,8 @@
 
         checkArrowSlot() {
             if (!this.savedArrow) return;
+            // Only run for hunter profession ('h' = Łowca)
+            if (this.currentProfession && this.currentProfession !== 'h') return;
             // If battle is active, don't interfere
             if (document.querySelector('.battle-window')) return;
             // Check if arrow slot is already filled
