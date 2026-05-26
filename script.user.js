@@ -5794,6 +5794,42 @@
                 @keyframes artefact-pulse {
                     0%, 100% { box-shadow: inset 0 0 ${b * 2}px ${t * 6}px ${colors.artefact}, 0 0 12px 2px ${colors.artefact}; }
                     50% { box-shadow: inset 0 0 ${b * 2}px ${t * 4}px ${colors.artefact}, 0 0 20px 4px ${colors.artefact}; }
+                }
+                /* LegendLootPanel item wrappers */
+                .legend-loot-item.heroic {
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.heroic}, 0 0 1px 0px ${colors.heroic} !important;
+                }
+                .legend-loot-item.unique {
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.unique}, 0 0 1px 0px ${colors.unique} !important;
+                }
+                .legend-loot-item.legendary {
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.legendary}, 0 0 4px 0px ${colors.legendary} !important;
+                    animation: legendary-pulse 12s infinite;
+                }
+                .legend-loot-item.upgraded {
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.upgraded}, 0 0 1px 0px ${colors.upgraded} !important;
+                }
+                .legend-loot-item.artefact {
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.artefact}, 0 0 6px 0px ${colors.artefact} !important;
+                    animation: artefact-pulse 12s infinite;
+                }
+                /* AutoArrowRefill slot item wrappers */
+                .arrow-refill-slot-item.heroic {
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.heroic}, 0 0 1px 0px ${colors.heroic} !important;
+                }
+                .arrow-refill-slot-item.unique {
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.unique}, 0 0 1px 0px ${colors.unique} !important;
+                }
+                .arrow-refill-slot-item.legendary {
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.legendary}, 0 0 4px 0px ${colors.legendary} !important;
+                    animation: legendary-pulse 12s infinite;
+                }
+                .arrow-refill-slot-item.upgraded {
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.upgraded}, 0 0 1px 0px ${colors.upgraded} !important;
+                }
+                .arrow-refill-slot-item.artefact {
+                    box-shadow: inset 0 0 ${b}px ${t}px ${colors.artefact}, 0 0 6px 0px ${colors.artefact} !important;
+                    animation: artefact-pulse 12s infinite;
                 }`;
         },
 
@@ -5820,7 +5856,12 @@
                 .item-preview.unique,  .item-preview.heroic,
                 .item-preview.upgraded,.item-preview.legendary,  .item-preview.artefact,
                 .loot .item.unique, .loot .item.heroic,
-                .loot .item.upgraded, .loot .item.legendary, .loot .item.artefact`;
+                .loot .item.upgraded, .loot .item.legendary, .loot .item.artefact,
+                .legend-loot-item.unique, .legend-loot-item.heroic,
+                .legend-loot-item.upgraded, .legend-loot-item.legendary, .legend-loot-item.artefact,
+                .arrow-refill-slot-item.unique, .arrow-refill-slot-item.heroic,
+                .arrow-refill-slot-item.upgraded, .arrow-refill-slot-item.legendary,
+                .arrow-refill-slot-item.artefact`;
             const after = (pct, extra = '') => `
                 content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
                 background: ${frame(pct)}; ${extra}`;
@@ -5832,21 +5873,24 @@
                 [data-item].item.unique::after, [data-item].loot.unique::after,
                 .loot[data-item*='"rarity":"unique"']::after,
                 .auction-item.unique::after, .item-display.unique::after,
-                .item-preview.unique::after, .loot .item.unique::after
+                .item-preview.unique::after, .loot .item.unique::after,
+                .legend-loot-item.unique::after, .arrow-refill-slot-item.unique::after
                 { ${after(0)} }
 
                 /* Heroic */
                 [data-item].item.heroic::after, [data-item].loot.heroic::after,
                 .loot[data-item*='"rarity":"heroic"']::after,
                 .auction-item.heroic::after, .item-display.heroic::after,
-                .item-preview.heroic::after, .loot .item.heroic::after
+                .item-preview.heroic::after, .loot .item.heroic::after,
+                .legend-loot-item.heroic::after, .arrow-refill-slot-item.heroic::after
                 { ${after(25)} }
 
                 /* Upgraded */
                 [data-item].item.upgraded::after, [data-item].loot.upgraded::after,
                 .loot[data-item*='"upgraded":1']::after,
                 .auction-item.upgraded::after, .item-display.upgraded::after,
-                .item-preview.upgraded::after, .loot .item.upgraded::after
+                .item-preview.upgraded::after, .loot .item.upgraded::after,
+                .legend-loot-item.upgraded::after, .arrow-refill-slot-item.upgraded::after
                 { ${after(50)} }
 
                 /* Legendary */
@@ -5854,14 +5898,16 @@
                 .loot[data-item*='"rarity":"legendary"']::after,
                 .loot[data-item*='"legendaryBow":1']::after,
                 .auction-item.legendary::after, .item-display.legendary::after,
-                .item-preview.legendary::after, .loot .item.legendary::after
+                .item-preview.legendary::after, .loot .item.legendary::after,
+                .legend-loot-item.legendary::after, .arrow-refill-slot-item.legendary::after
                 { ${after(75)} }
 
                 /* Artefact */
                 [data-item].item.artefact::after, [data-item].loot.artefact::after,
                 .loot[data-item*='"rarity":"artefact"']::after,
                 .auction-item.artefact::after, .item-display.artefact::after,
-                .item-preview.artefact::after, .loot .item.artefact::after
+                .item-preview.artefact::after, .loot .item.artefact::after,
+                .legend-loot-item.artefact::after, .arrow-refill-slot-item.artefact::after
                 { ${after(100)} }
 
                 /* Suppress the background-image on [data-item] divs so the JS-injected
@@ -5890,7 +5936,13 @@
                 .item-preview.artefact > img,
                 .loot .item.unique   > img, .loot .item.heroic   > img,
                 .loot .item.upgraded > img, .loot .item.legendary > img,
-                .loot .item.artefact > img {
+                .loot .item.artefact > img,
+                .legend-loot-item.unique   > img, .legend-loot-item.heroic   > img,
+                .legend-loot-item.upgraded > img, .legend-loot-item.legendary > img,
+                .legend-loot-item.artefact > img,
+                .arrow-refill-slot-item.unique   > img, .arrow-refill-slot-item.heroic   > img,
+                .arrow-refill-slot-item.upgraded > img, .arrow-refill-slot-item.legendary > img,
+                .arrow-refill-slot-item.artefact > img {
                     position: relative !important;
                     z-index: 2 !important;
                 }`;
@@ -6010,90 +6062,211 @@
             popup.appendChild(modeRow);
 
             if (currentMode === 'image') {
-                // URL input
+                // ---- Helper: build a mini 5-frame sprite preview (32×32 × 5) ----
+                const makePreviewStrip = (url) => {
+                    const rarityLabels = ['Unikat', 'Heroik', 'Ulepsz.', 'Legenda', 'Artefakt'];
+                    const row = document.createElement('div');
+                    Object.assign(row.style, {
+                        display: 'flex', gap: '4px',
+                        padding: '6px', background: '#061d02', borderRadius: '6px',
+                        border: '1px solid #1a4d0d'
+                    });
+                    const imgs = rarityLabels.map((lbl, i) => {
+                        const col = document.createElement('div');
+                        Object.assign(col.style, { textAlign: 'center', flex: '1' });
+                        const box = document.createElement('div');
+                        Object.assign(box.style, {
+                            width: '28px', height: '28px', margin: '0 auto 2px',
+                            border: '1px solid #1a4d0d', borderRadius: '2px',
+                            backgroundColor: '#10240a', overflow: 'hidden', position: 'relative'
+                        });
+                        const img = document.createElement('img');
+                        Object.assign(img.style, {
+                            position: 'absolute', top: '0',
+                            left: `-${i * 28}px`,
+                            width: '140px', height: '28px',
+                            imageRendering: 'pixelated',
+                            display: url ? 'block' : 'none'
+                        });
+                        if (url) img.src = url;
+                        box.appendChild(img);
+                        const lab = document.createElement('div');
+                        lab.textContent = lbl;
+                        Object.assign(lab.style, { fontSize: '8px', color: '#a0a0a0' });
+                        col.appendChild(box); col.appendChild(lab);
+                        row.appendChild(col);
+                        return img;
+                    });
+                    return { row, imgs };
+                };
+
+                // ---- Saved frames section ----
+                let savedFrames = [];
+                try { savedFrames = JSON.parse(GM_getValue('highlightSavedFrames', '[]')); } catch(e) {}
+
+                const savedLabel = document.createElement('div');
+                savedLabel.textContent = 'Zapisane ramki:';
+                Object.assign(savedLabel.style, { fontSize: '11px', color: '#a0a0a0', marginBottom: '6px' });
+                popup.appendChild(savedLabel);
+
+                const savedGrid = document.createElement('div');
+                Object.assign(savedGrid.style, {
+                    display: 'flex', flexWrap: 'wrap', gap: '6px',
+                    minHeight: '36px', marginBottom: '10px',
+                    padding: '6px', background: '#061d02', borderRadius: '6px',
+                    border: '1px solid #1a4d0d'
+                });
+                popup.appendChild(savedGrid);
+
+                const activeUrl = GM_getValue('highlightFrameUrl', '');
+
+                const renderSavedFrames = () => {
+                    savedGrid.innerHTML = '';
+                    if (savedFrames.length === 0) {
+                        const empty = document.createElement('div');
+                        empty.textContent = 'Brak zapisanych ramek';
+                        Object.assign(empty.style, { fontSize: '11px', color: '#555', margin: 'auto' });
+                        savedGrid.appendChild(empty);
+                        return;
+                    }
+                    savedFrames.forEach((frame, idx) => {
+                        const cell = document.createElement('div');
+                        const isCurrent = frame.url === GM_getValue('highlightFrameUrl', '');
+                        Object.assign(cell.style, {
+                            position: 'relative', cursor: 'pointer',
+                            border: `2px solid ${isCurrent ? '#4CAF50' : '#1a4d0d'}`,
+                            borderRadius: '4px', padding: '2px',
+                            background: isCurrent ? 'rgba(76,175,80,0.15)' : '#0b2505',
+                            transition: 'border-color 0.2s'
+                        });
+                        cell.title = frame.name || frame.url;
+
+                        // 32×32 preview of first sprite (unique slot)
+                        const box = document.createElement('div');
+                        Object.assign(box.style, {
+                            width: '32px', height: '32px',
+                            border: '1px solid #1a4d0d', borderRadius: '2px',
+                            backgroundColor: '#10240a', overflow: 'hidden', position: 'relative'
+                        });
+                        const img = document.createElement('img');
+                        Object.assign(img.style, {
+                            position: 'absolute', top: '0', left: '0',
+                            width: '160px', height: '32px', imageRendering: 'pixelated'
+                        });
+                        img.src = frame.url;
+                        box.appendChild(img);
+                        cell.appendChild(box);
+
+                        // Name label under thumbnail
+                        if (frame.name) {
+                            const nm = document.createElement('div');
+                            nm.textContent = frame.name;
+                            Object.assign(nm.style, {
+                                fontSize: '8px', color: '#a0a0a0', textAlign: 'center',
+                                maxWidth: '36px', overflow: 'hidden', whiteSpace: 'nowrap',
+                                textOverflow: 'ellipsis'
+                            });
+                            cell.appendChild(nm);
+                        }
+
+                        // Delete button
+                        const del = document.createElement('div');
+                        del.textContent = '✖';
+                        Object.assign(del.style, {
+                            position: 'absolute', top: '-4px', right: '-4px',
+                            width: '14px', height: '14px', lineHeight: '14px',
+                            textAlign: 'center', fontSize: '8px',
+                            background: '#CC5252', color: 'white', borderRadius: '50%',
+                            cursor: 'pointer', display: 'none', zIndex: '5'
+                        });
+                        del.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            savedFrames.splice(idx, 1);
+                            GM_setValue('highlightSavedFrames', JSON.stringify(savedFrames));
+                            renderSavedFrames();
+                        });
+                        cell.appendChild(del);
+                        cell.addEventListener('mouseenter', () => { del.style.display = 'block'; });
+                        cell.addEventListener('mouseleave', () => { del.style.display = 'none'; });
+
+                        // Click: select this frame
+                        cell.addEventListener('click', () => {
+                            GM_setValue('highlightFrameUrl', frame.url);
+                            urlInput.value = frame.url;
+                            updatePreview(frame.url);
+                            Highlights.addStyles();
+                            renderSavedFrames();
+                        });
+
+                        savedGrid.appendChild(cell);
+                    });
+                };
+
+                // ---- URL input row ----
                 const urlLabel = document.createElement('div');
-                urlLabel.textContent = 'URL sprite sheet (160×32 px — kolejność: Unikat, Heroik, Ulepszony, Legenda, Artefakt)';
+                urlLabel.textContent = 'URL sprite sheet (160×32 px — kolejność: Unikat, Heroik, Ulepszony, Legenda, Artefakt):';
                 Object.assign(urlLabel.style, { fontSize: '11px', color: '#a0a0a0', marginBottom: '6px' });
                 popup.appendChild(urlLabel);
+
+                const urlRow = document.createElement('div');
+                Object.assign(urlRow.style, { display: 'flex', gap: '6px', marginBottom: '6px' });
 
                 const urlInput = document.createElement('input');
                 urlInput.type = 'text';
                 urlInput.value = GM_getValue('highlightFrameUrl', '');
                 urlInput.placeholder = 'https://example.com/frames.png';
                 Object.assign(urlInput.style, {
-                    width: 'calc(100% - 24px)', padding: '8px 12px', borderRadius: '6px',
+                    flex: '1', padding: '8px 10px', borderRadius: '6px',
                     border: '1px solid #1a4d0d', background: '#10240a', color: 'white',
-                    fontSize: '12px', fontFamily: 'times-new-roman', marginBottom: '10px'
+                    fontSize: '12px', fontFamily: 'times-new-roman'
                 });
                 urlInput.addEventListener('input', () => {
                     GM_setValue('highlightFrameUrl', urlInput.value.trim());
-                    this.addStyles();
+                    Highlights.addStyles();
                     updatePreview(urlInput.value.trim());
+                    renderSavedFrames();
                 });
-                popup.appendChild(urlInput);
 
-                // Preview strip
+                const saveBtn = document.createElement('button');
+                saveBtn.textContent = '💾 Zapisz';
+                Object.assign(saveBtn.style, {
+                    padding: '8px 10px', borderRadius: '6px', border: '1px solid #1a4d0d',
+                    background: '#0b2505', color: 'white', cursor: 'pointer',
+                    fontFamily: 'times-new-roman', fontSize: '12px', whiteSpace: 'nowrap'
+                });
+                saveBtn.addEventListener('click', () => {
+                    const url = urlInput.value.trim();
+                    if (!url) return;
+                    if (savedFrames.some(f => f.url === url)) return;
+                    const name = prompt('Nazwa ramki (opcjonalnie):', '') || '';
+                    savedFrames.push({ name, url });
+                    GM_setValue('highlightSavedFrames', JSON.stringify(savedFrames));
+                    renderSavedFrames();
+                });
+
+                urlRow.appendChild(urlInput);
+                urlRow.appendChild(saveBtn);
+                popup.appendChild(urlRow);
+
+                // ---- Preview strip ----
                 const previewLabel = document.createElement('div');
-                previewLabel.textContent = 'Podgląd ramek (32×32):';
+                previewLabel.textContent = 'Podgląd aktywnej ramki:';
                 Object.assign(previewLabel.style, { fontSize: '11px', color: '#a0a0a0', marginBottom: '6px' });
                 popup.appendChild(previewLabel);
 
-                const previewRow = document.createElement('div');
-                Object.assign(previewRow.style, {
-                    display: 'flex', gap: '6px', marginBottom: '12px',
-                    padding: '8px', background: '#061d02', borderRadius: '8px',
-                    border: '1px solid #1a4d0d'
-                });
-
-                // Each frame is shown by clipping a full-width <img> inside a 32×32 overflow:hidden
-                // container, offsetting the image left by i*32px to reveal the correct sprite column.
-                // This avoids CSS background-image conflicts with other injected styles.
-                const rarityLabels = ['Unikat', 'Heroik', 'Ulepsz.', 'Legenda', 'Artefakt'];
-                const frameImgs = rarityLabels.map((lbl, i) => {
-                    const col = document.createElement('div');
-                    Object.assign(col.style, { textAlign: 'center', flex: '1' });
-
-                    const box = document.createElement('div');
-                    Object.assign(box.style, {
-                        width: '32px', height: '32px', margin: '0 auto 4px',
-                        border: '1px solid #1a4d0d', borderRadius: '2px',
-                        backgroundColor: '#10240a',
-                        overflow: 'hidden', position: 'relative'
-                    });
-
-                    const img = document.createElement('img');
-                    Object.assign(img.style, {
-                        position: 'absolute', top: '0',
-                        left: `-${i * 32}px`,
-                        width: '160px', height: '32px',
-                        imageRendering: 'pixelated',
-                        display: urlInput.value ? 'block' : 'none'
-                    });
-                    if (urlInput.value) img.src = urlInput.value;
-                    box.appendChild(img);
-
-                    const lab = document.createElement('div');
-                    lab.textContent = lbl;
-                    Object.assign(lab.style, { fontSize: '9px', color: '#a0a0a0' });
-
-                    col.appendChild(box);
-                    col.appendChild(lab);
-                    previewRow.appendChild(col);
-                    return img;
-                });
+                const { row: previewRow, imgs: frameImgs } = makePreviewStrip(urlInput.value);
+                Object.assign(previewRow.style, { marginBottom: '12px' });
                 popup.appendChild(previewRow);
 
                 const updatePreview = (url) => {
                     frameImgs.forEach(img => {
-                        if (url) {
-                            img.src = url;
-                            img.style.display = 'block';
-                        } else {
-                            img.src = '';
-                            img.style.display = 'none';
-                        }
+                        if (url) { img.src = url; img.style.display = 'block'; }
+                        else { img.src = ''; img.style.display = 'none'; }
                     });
                 };
+
+                // Render saved frames after urlInput and updatePreview are defined
+                renderSavedFrames();
             }
 
             // Close button
@@ -6438,7 +6611,7 @@
             });
 
             const imgWrapper = document.createElement('div');
-            const legendColor = GM_getValue('highlightColorLegendary', '#d1249e');
+            imgWrapper.className = 'legend-loot-item legendary';
             Object.assign(imgWrapper.style, {
                 width: '32px',
                 height: '32px',
@@ -6448,7 +6621,6 @@
                 background: '#10240a',
                 borderRadius: '2px',
                 marginBottom: '2px',
-                boxShadow: `inset 0 0 0 1px ${legendColor}, 0 0 3px ${legendColor}`,
                 position: 'relative'
             });
 
@@ -6458,7 +6630,9 @@
             Object.assign(img.style, {
                 maxWidth: '100%',
                 maxHeight: '100%',
-                objectFit: 'contain'
+                objectFit: 'contain',
+                position: 'relative',
+                zIndex: '2'
             });
 
             imgWrapper.appendChild(img);
@@ -6947,34 +7121,35 @@
 
         openEditor() {
             document.getElementById('ui-themer-popup')?.remove();
+            const t = this.getTheme();
             const popup = document.createElement('div');
             popup.id = 'ui-themer-popup';
             Object.assign(popup.style, {
                 position: 'fixed', top: '50%', left: '50%',
                 transform: 'translate(-50%,-50%)',
                 padding: '15px', borderRadius: '12px',
-                border: '2px solid #1a4d0d',
+                border: `2px solid ${t.border}`,
                 boxShadow: '0 4px 20px rgba(0,0,0,0.7)',
-                zIndex: '10004', color: 'white', fontSize: '13px',
+                zIndex: '10004', color: t.text, fontSize: '13px',
                 width: '400px', cursor: 'grab',
-                background: '#0b2505', fontFamily: 'times-new-roman'
+                background: t.bgDark, fontFamily: 'times-new-roman'
             });
 
             const title = document.createElement('div');
             title.textContent = '🎨 Edytor Motywu UI';
             Object.assign(title.style, {
                 fontWeight: 'bold', fontSize: '16px', marginBottom: '12px',
-                paddingBottom: '10px', borderBottom: '1px solid #1a4d0d', userSelect: 'none'
+                paddingBottom: '10px', borderBottom: `1px solid ${t.border}`, userSelect: 'none'
             });
             popup.appendChild(title);
 
             const scroll = document.createElement('div');
             Object.assign(scroll.style, {
                 maxHeight: '340px', overflowY: 'auto', paddingRight: '4px',
-                scrollbarWidth: 'thin', scrollbarColor: '#1a4d0d #061d02'
+                scrollbarWidth: 'thin', scrollbarColor: `${t.border} ${t.bgDarker}`
             });
 
-            const theme = this.getTheme();
+            const theme = t;
             const pickers = {};
 
             Object.entries(this.LABELS).forEach(([key, label]) => {
@@ -6982,11 +7157,11 @@
                 Object.assign(row.style, {
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     marginBottom: '8px', padding: '8px 10px',
-                    background: '#061d02', borderRadius: '8px', border: '1px solid #1a4d0d'
+                    background: t.bgDarker, borderRadius: '8px', border: `1px solid ${t.border}`
                 });
                 const lbl = document.createElement('span');
                 lbl.textContent = label;
-                Object.assign(lbl.style, { fontSize: '12px', fontWeight: '600' });
+                Object.assign(lbl.style, { fontSize: '12px', fontWeight: '600', color: t.text });
 
                 const colorRow = document.createElement('div');
                 Object.assign(colorRow.style, { display: 'flex', alignItems: 'center', gap: '8px' });
@@ -6995,7 +7170,7 @@
                 picker.type = 'color';
                 picker.value = theme[key];
                 Object.assign(picker.style, {
-                    width: '40px', height: '28px', border: '1px solid #1a4d0d',
+                    width: '40px', height: '28px', border: `1px solid ${t.border}`,
                     borderRadius: '4px', background: 'transparent', cursor: 'pointer'
                 });
                 picker.addEventListener('input', () => {
@@ -7006,8 +7181,8 @@
                 const resetBtn = document.createElement('button');
                 resetBtn.textContent = '↺';
                 Object.assign(resetBtn.style, {
-                    padding: '2px 7px', borderRadius: '4px', border: '1px solid #1a4d0d',
-                    background: '#10240a', color: 'white', cursor: 'pointer',
+                    padding: '2px 7px', borderRadius: '4px', border: `1px solid ${t.border}`,
+                    background: t.bgInput, color: t.text, cursor: 'pointer',
                     fontSize: '13px', fontFamily: 'times-new-roman'
                 });
                 resetBtn.title = 'Resetuj do domyślnego';
@@ -7029,12 +7204,12 @@
             // Preset management
             const presetSection = document.createElement('div');
             Object.assign(presetSection.style, {
-                marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #1a4d0d'
+                marginTop: '12px', paddingTop: '10px', borderTop: `1px solid ${t.border}`
             });
 
             const presetTitle = document.createElement('div');
             presetTitle.textContent = '💾 Presety';
-            Object.assign(presetTitle.style, { fontWeight: '600', fontSize: '13px', marginBottom: '8px' });
+            Object.assign(presetTitle.style, { fontWeight: '600', fontSize: '13px', marginBottom: '8px', color: t.text });
             presetSection.appendChild(presetTitle);
 
             const presetInputRow = document.createElement('div');
@@ -7045,15 +7220,15 @@
             presetInput.placeholder = 'Nazwa presetu...';
             Object.assign(presetInput.style, {
                 flex: '1', padding: '6px 10px', borderRadius: '6px',
-                border: '1px solid #1a4d0d', background: '#10240a',
-                color: 'white', fontSize: '12px', fontFamily: 'times-new-roman'
+                border: `1px solid ${t.border}`, background: t.bgInput,
+                color: t.text, fontSize: '12px', fontFamily: 'times-new-roman'
             });
 
             const saveBtn = document.createElement('button');
             saveBtn.textContent = 'Zapisz';
             Object.assign(saveBtn.style, {
                 padding: '6px 12px', borderRadius: '6px', border: 'none',
-                background: '#4CAF50', color: 'white', cursor: 'pointer',
+                background: t.accent, color: t.text, cursor: 'pointer',
                 fontFamily: 'times-new-roman', fontSize: '12px'
             });
             saveBtn.addEventListener('click', () => {
@@ -7069,7 +7244,7 @@
             const presetList = document.createElement('div');
             Object.assign(presetList.style, {
                 maxHeight: '100px', overflowY: 'auto',
-                scrollbarWidth: 'thin', scrollbarColor: '#1a4d0d #061d02'
+                scrollbarWidth: 'thin', scrollbarColor: `${t.border} ${t.bgDarker}`
             });
 
             const renderPresets = () => {
@@ -7078,7 +7253,7 @@
                 if (Object.keys(presets).length === 0) {
                     const empty = document.createElement('div');
                     empty.textContent = 'Brak zapisanych presetów';
-                    Object.assign(empty.style, { fontSize: '11px', color: '#a0a0a0', padding: '4px' });
+                    Object.assign(empty.style, { fontSize: '11px', color: t.textSub, padding: '4px' });
                     presetList.appendChild(empty);
                     return;
                 }
@@ -7087,11 +7262,11 @@
                     Object.assign(row.style, {
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         padding: '4px 8px', marginBottom: '4px',
-                        background: '#061d02', borderRadius: '6px', border: '1px solid #1a4d0d'
+                        background: t.bgDarker, borderRadius: '6px', border: `1px solid ${t.border}`
                     });
                     const nameEl = document.createElement('span');
                     nameEl.textContent = name;
-                    Object.assign(nameEl.style, { fontSize: '12px', flex: '1' });
+                    Object.assign(nameEl.style, { fontSize: '12px', flex: '1', color: t.text });
 
                     const btnRow = document.createElement('div');
                     Object.assign(btnRow.style, { display: 'flex', gap: '4px' });
@@ -7100,7 +7275,7 @@
                     loadBtn.textContent = 'Wczytaj';
                     Object.assign(loadBtn.style, {
                         padding: '3px 8px', borderRadius: '4px', border: 'none',
-                        background: '#4CAF50', color: 'white', cursor: 'pointer',
+                        background: t.accent, color: t.text, cursor: 'pointer',
                         fontSize: '11px', fontFamily: 'times-new-roman'
                     });
                     loadBtn.addEventListener('click', () => {
@@ -7113,8 +7288,8 @@
                     const delBtn = document.createElement('button');
                     delBtn.textContent = '✕';
                     Object.assign(delBtn.style, {
-                        padding: '3px 7px', borderRadius: '4px', border: '1px solid #1a4d0d',
-                        background: '#10240a', color: '#ff6b6b', cursor: 'pointer',
+                        padding: '3px 7px', borderRadius: '4px', border: `1px solid ${t.border}`,
+                        background: t.bgInput, color: '#ff6b6b', cursor: 'pointer',
                         fontSize: '11px', fontFamily: 'times-new-roman'
                     });
                     delBtn.addEventListener('click', () => { this.deletePreset(name); renderPresets(); });
@@ -7137,8 +7312,8 @@
             const resetAllBtn = document.createElement('button');
             resetAllBtn.textContent = 'Resetuj wszystko';
             Object.assign(resetAllBtn.style, {
-                flex: '1', padding: '10px', borderRadius: '8px', border: '1px solid #1a4d0d',
-                background: '#10240a', color: 'white', cursor: 'pointer',
+                flex: '1', padding: '10px', borderRadius: '8px', border: `1px solid ${t.border}`,
+                background: t.bgInput, color: t.text, cursor: 'pointer',
                 fontFamily: 'times-new-roman', fontSize: '13px'
             });
             resetAllBtn.addEventListener('click', () => {
@@ -7153,7 +7328,7 @@
             closeBtn.textContent = 'Zamknij';
             Object.assign(closeBtn.style, {
                 flex: '1', padding: '10px', borderRadius: '8px', border: 'none',
-                background: '#4CAF50', color: 'white', cursor: 'pointer',
+                background: t.accent, color: t.text, cursor: 'pointer',
                 fontWeight: '600', fontFamily: 'times-new-roman', fontSize: '13px'
             });
             closeBtn.addEventListener('click', () => popup.remove());
@@ -7178,6 +7353,298 @@
                 popup.style.transform = 'none';
             });
             document.addEventListener('mouseup', () => { dragging = false; popup.style.cursor = 'grab'; });
+        }
+    };
+
+    // ======================== AUTO ARROW REFILL ========================
+    const AutoArrowRefill = {
+        panel: null,
+        STORAGE_KEY: 'autoArrowRefillPos',
+        savedArrow: null,   // { baseItemId, src, name, rarity }
+        _draggedItem: null,
+        _dragTracking: false,
+
+        toggle(enabled) {
+            GM_setValue('autoArrowRefillEnabled', enabled);
+            if (enabled) {
+                this.init();
+                this.startPolling();
+            } else {
+                this.stopPolling();
+                this.closePanel();
+            }
+        },
+
+        init() {
+            if (!this.panel) this.createPanel();
+            const saved = GM_getValue('autoArrowRefillItem', '');
+            if (saved) {
+                try { this.savedArrow = JSON.parse(saved); } catch(e) { this.savedArrow = null; }
+            }
+            this.setupDragTracking();
+        },
+
+        setupDragTracking() {
+            if (this._dragTracking) return;
+            this._dragTracking = true;
+            // Track which item the user last pressed mousedown on
+            document.addEventListener('mousedown', (e) => {
+                const item = e.target.closest('[data-item].item');
+                if (item) this._draggedItem = item;
+            }, true);
+            document.addEventListener('mouseup', () => {
+                setTimeout(() => { this._draggedItem = null; }, 300);
+            }, true);
+        },
+
+        createPanel() {
+            if (this.panel) return;
+            const t = UIThemer.getTheme();
+
+            this.panel = document.createElement('div');
+            this.panel.id = 'auto-arrow-refill-panel';
+            Object.assign(this.panel.style, {
+                position: 'fixed', top: '200px', left: '10px',
+                padding: '10px',
+                backgroundColor: t.bgDark,
+                borderRadius: '8px', color: 'white',
+                fontFamily: 'times-new-roman', fontSize: '13px',
+                zIndex: '9999', width: '130px',
+                boxShadow: '0 2px 15px rgba(0,0,0,0.7)',
+                border: `2px solid ${t.border}`,
+                userSelect: 'none'
+            });
+
+            const savedPos = JSON.parse(localStorage.getItem(this.STORAGE_KEY) || 'null');
+            if (savedPos) {
+                this.panel.style.top = savedPos.top + 'px';
+                this.panel.style.left = savedPos.left + 'px';
+            }
+
+            // Header: icon + title
+            const header = document.createElement('div');
+            Object.assign(header.style, {
+                display: 'flex', alignItems: 'center', gap: '6px',
+                marginBottom: '8px', cursor: 'grab'
+            });
+
+            const icon = document.createElement('img');
+            icon.src = 'https://imgur.com/2jMJMsO.png';
+            Object.assign(icon.style, { width: '18px', height: '18px', borderRadius: '3px' });
+
+            const titleEl = document.createElement('span');
+            titleEl.textContent = 'Auto Strzały';
+            Object.assign(titleEl.style, { fontSize: '12px', fontWeight: 'bold', color: t.text });
+
+            header.appendChild(icon);
+            header.appendChild(titleEl);
+            this.panel.appendChild(header);
+
+            // Divider
+            const divider = document.createElement('div');
+            Object.assign(divider.style, {
+                borderTop: `1px dashed ${t.border}`, marginBottom: '8px'
+            });
+            this.panel.appendChild(divider);
+
+            // Drop slot
+            const slotLabel = document.createElement('div');
+            slotLabel.textContent = 'Slot strzał:';
+            Object.assign(slotLabel.style, { fontSize: '10px', color: t.textSub, marginBottom: '4px' });
+            this.panel.appendChild(slotLabel);
+
+            const slot = document.createElement('div');
+            slot.id = 'arrow-refill-drop-slot';
+            Object.assign(slot.style, {
+                width: '40px', height: '40px', margin: '0 auto',
+                border: `2px dashed ${t.border}`,
+                borderRadius: '4px', background: t.bgInput,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', position: 'relative',
+                overflow: 'visible', transition: 'border-color 0.2s'
+            });
+
+            const slotHint = document.createElement('div');
+            slotHint.textContent = '+';
+            Object.assign(slotHint.style, { fontSize: '20px', color: t.textSub, pointerEvents: 'none' });
+            slot.appendChild(slotHint);
+            this.panel.appendChild(slot);
+
+            // Status label
+            const statusEl = document.createElement('div');
+            statusEl.id = 'arrow-refill-status';
+            Object.assign(statusEl.style, {
+                fontSize: '9px', color: t.textSub, textAlign: 'center', marginTop: '5px'
+            });
+            this.panel.appendChild(statusEl);
+
+            // Render saved arrow in slot if any
+            this.updateSlotDisplay(slot, slotHint, statusEl);
+
+            // Drop zone: accept on mouseup over the slot
+            slot.addEventListener('mouseup', (e) => {
+                const item = this._draggedItem;
+                if (!item) return;
+                const data = Utils.parseItemData(item);
+                if (!data) return;
+                const inner = data.schema?.inner;
+                const baseItemId = inner?.baseItemId || inner?.id;
+                if (!baseItemId) return;
+
+                // Extract icon src from the item's background-image or <img> child
+                let src = '';
+                const imgChild = item.querySelector('img.highlight-frame-icon') || item.querySelector('img');
+                if (imgChild) {
+                    src = imgChild.src;
+                } else {
+                    const raw = item.style.backgroundImage;
+                    if (raw) {
+                        const m = raw.match(/url\(["']?([^"')]+)/);
+                        if (m) src = m[1];
+                    }
+                }
+
+                this.savedArrow = {
+                    baseItemId,
+                    src,
+                    name: inner?.name || 'Strzały',
+                    rarity: inner?.rarity || 'common'
+                };
+                GM_setValue('autoArrowRefillItem', JSON.stringify(this.savedArrow));
+                this.updateSlotDisplay(slot, slotHint, statusEl);
+            });
+
+            // Hover highlight on the slot
+            slot.addEventListener('mouseenter', () => {
+                slot.style.borderColor = t.accent;
+                slot.style.borderStyle = 'solid';
+            });
+            slot.addEventListener('mouseleave', () => {
+                slot.style.borderColor = t.border;
+                slot.style.borderStyle = 'dashed';
+            });
+
+            // Right-click to clear slot
+            slot.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                this.savedArrow = null;
+                GM_setValue('autoArrowRefillItem', '');
+                this.updateSlotDisplay(slot, slotHint, statusEl);
+            });
+
+            document.body.appendChild(this.panel);
+            this.makeDraggable(this.panel, header);
+        },
+
+        updateSlotDisplay(slot, slotHint, statusEl) {
+            // Clear previous item display
+            slot.querySelectorAll('.arrow-slot-icon').forEach(el => el.remove());
+
+            if (this.savedArrow) {
+                // Hide hint text
+                if (slotHint) slotHint.style.display = 'none';
+
+                // Item wrapper with Highlights border class
+                const wrapper = document.createElement('div');
+                wrapper.className = `arrow-refill-slot-item ${this.savedArrow.rarity || 'common'}`;
+                Object.assign(wrapper.style, {
+                    width: '32px', height: '32px',
+                    position: 'absolute', top: '50%', left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    background: '#10240a', borderRadius: '2px', overflow: 'hidden'
+                });
+                wrapper.classList.add('arrow-slot-icon');
+
+                if (this.savedArrow.src) {
+                    const img = document.createElement('img');
+                    img.src = this.savedArrow.src;
+                    Object.assign(img.style, {
+                        width: '100%', height: '100%', objectFit: 'contain',
+                        position: 'relative', zIndex: '2'
+                    });
+                    wrapper.appendChild(img);
+                }
+
+                slot.style.borderStyle = 'solid';
+                slot.appendChild(wrapper);
+
+                if (statusEl) {
+                    statusEl.textContent = this.savedArrow.name || 'Strzały';
+                    statusEl.title = 'Kliknij PPM na slot by wyczyścić';
+                }
+            } else {
+                if (slotHint) slotHint.style.display = '';
+                if (statusEl) statusEl.textContent = 'Upuść strzały na slot';
+                slot.style.borderStyle = 'dashed';
+            }
+        },
+
+        startPolling() {
+            intervalManager.set('autoArrowRefill', () => this.checkArrowSlot(), 1500);
+        },
+
+        stopPolling() {
+            intervalManager.clear('autoArrowRefill');
+        },
+
+        closePanel() {
+            if (this.panel) {
+                this.panel.remove();
+                this.panel = null;
+            }
+        },
+
+        checkArrowSlot() {
+            if (!this.savedArrow) return;
+            // If battle is active, don't interfere
+            if (document.querySelector('.battle-window')) return;
+            // Check if arrow slot is already filled
+            const arrowInSlot = document.querySelector('.equipment-grid [data-key="8"]');
+            if (arrowInSlot) return;
+
+            // Find matching item in bag
+            const bagItems = document.querySelectorAll('#bag .items .item');
+            for (const item of bagItems) {
+                const data = Utils.parseItemData(item);
+                if (!data) continue;
+                const inner = data.schema?.inner;
+                const itemId = inner?.baseItemId || inner?.id;
+                if (itemId && itemId === this.savedArrow.baseItemId) {
+                    const equipmentGrid = document.querySelector('.equipment-grid');
+                    if (equipmentGrid) {
+                        Utils.moveItemToRandomPosition(item, equipmentGrid);
+                        MessageCanvas.show(this.savedArrow.name || 'Strzały', 'Uzupełniono: ', '#ffd700');
+                    }
+                    break;
+                }
+            }
+        },
+
+        makeDraggable(panel, handle) {
+            let isDragging = false, offsetX, offsetY;
+            (handle || panel).addEventListener('mousedown', (e) => {
+                if (e.target.tagName === 'BUTTON' || e.target.closest('[id="arrow-refill-drop-slot"]')) return;
+                isDragging = true;
+                offsetX = e.clientX - panel.offsetLeft;
+                offsetY = e.clientY - panel.offsetTop;
+                panel.style.cursor = 'grabbing';
+                e.stopPropagation();
+            });
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                panel.style.left = (e.clientX - offsetX) + 'px';
+                panel.style.top = (e.clientY - offsetY) + 'px';
+                panel.style.right = 'auto';
+            });
+            document.addEventListener('mouseup', () => {
+                if (!isDragging) return;
+                isDragging = false;
+                panel.style.cursor = 'default';
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
+                    top: parseInt(panel.style.top),
+                    left: parseInt(panel.style.left)
+                }));
+            });
         }
     };
 
@@ -7367,6 +7834,14 @@
              { key: 'autoLootRejectGold', label: 'Zawsze odrzucaj złoto', type: 'checkbox', default: false },
              { key: 'autoLootRejectBag', label: 'Zawsze odrzucaj torby', type: 'checkbox', default: false }
          ]},
+        {
+            id: 'autoArrowRefillEnabled',
+            default: false,
+            icon: 'https://imgur.com/2jMJMsO.png',
+            title: 'Auto Strzały',
+            desc: 'Automatycznie uzupełnia strzały w ekwipunku z torby gdy skończą się w slocie.',
+            onToggle: (e) => AutoArrowRefill.toggle(e)
+        },
         { id: 'uiThemerEnabled', default: false, icon: 'https://imgur.com/ek1t4dN.png',
          title: 'UI Themer', desc: 'Edytor motywu UI modyfikuj kolory interfejsu i zapisuj własne presety.',
          onToggle: (e) => UIThemer.toggle(e),
