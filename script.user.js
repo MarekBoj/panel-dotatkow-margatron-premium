@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.3.5
+// @version      5.3.6
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -595,62 +595,60 @@
             }
         },
 
-        async captureMobData() {
+                async captureMobData() {
             const battleWindow = document.querySelector('.battle-window');
             if (!battleWindow) return;
 
             this.currentBattleMobs = [];
-            const opponentDivs = battleWindow.querySelectorAll('.opponent');
+
+            const opponentDivs = battleWindow.querySelectorAll(
+                '.battle-participant-node.opponent'
+            );
 
             console.log(`[BattleMonitor] Znaleziono ${opponentDivs.length} przeciwników`);
 
             for (const opponentDiv of opponentDivs) {
+
                 let mobName = null;
                 let mobLevel = '??';
                 let mobImage = null;
 
                 const imgElement = opponentDiv.querySelector('img');
-                if (imgElement) {
-                    mobImage = imgElement.src || imgElement.getAttribute('data-src');
 
-                    const altText = imgElement.getAttribute('alt');
-                    if (altText) {
-                        mobName = altText
-                            .replace(/&lt;br&gt;/g, ' ')
-                            .replace(/<br>/g, ' ')
-                            .replace(/\s+/g, ' ')
-                            .trim()
-                            .replace(/\d+%/, '')
-                            .trim();
-                    }
-
-                    const dataHtml = imgElement.getAttribute('data-html');
-                    if (dataHtml && !mobName) {
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = dataHtml;
-                        mobName = tempDiv.textContent.trim();
-                    }
+                if (!imgElement) {
+                    continue;
                 }
 
-                const dataNpc = opponentDiv.getAttribute('data-npc');
-                if (dataNpc) {
-                    try {
-                        const data = JSON.parse(dataNpc);
-                        mobLevel = data?.schema?.inner?.lvl || '??';
+                mobImage =
+                    imgElement.getAttribute('src') ||
+                    imgElement.getAttribute('data-src');
 
-                        if (!mobName) {
-                            mobName = data?.schema?.inner?.name
-                            || data?.schema?.name
-                            || data?.npc?.name
-                            || data?.name;
-                        }
-                    } catch (e) {
-                        console.log('[BattleMonitor] Błąd parsowania data-npc:', e);
+                const troopData = imgElement.getAttribute('data-troop');
+
+                if (troopData) {
+                    try {
+                        const data = JSON.parse(troopData);
+
+                        mobName =
+                            data?.schema?.inner?.name ||
+                            data?.schema?.name ||
+                            null;
+
+                        mobLevel =
+                            data?.schema?.inner?.lvl ||
+                            data?.schema?.lvl ||
+                            '??';
+
+                    } catch (err) {
+                        console.error(
+                            '[BattleMonitor] Błąd parsowania data-troop:',
+                            err
+                        );
                     }
                 }
 
                 if (!mobName) {
-                    console.log('[BattleMonitor] Pominięto moba bez nazwy');
+                    console.log('[BattleMonitor] Nie znaleziono nazwy moba');
                     continue;
                 }
 
@@ -660,14 +658,29 @@
                     .trim();
 
                 const mobInfo = this.getMobInfo(mobName);
+
                 if (mobInfo.rank === 'UNKNOWN') {
-                    console.log('[BattleMonitor] Pominięto moba spoza listy:', mobName);
+                    console.log(
+                        '[BattleMonitor] Pominięto moba spoza listy:',
+                        mobName
+                    );
                     continue;
                 }
 
                 let imageBase64 = null;
-                if (mobImage) {
-                    imageBase64 = await this.imageToBase64(mobImage);
+
+                if (
+                    mobImage &&
+                    !mobImage.startsWith('data:image/gif;base64')
+                ) {
+                    try {
+                        imageBase64 = await this.imageToBase64(mobImage);
+                    } catch (e) {
+                        console.warn(
+                            '[BattleMonitor] Nie udało się pobrać obrazka:',
+                            mobName
+                        );
+                    }
                 }
 
                 const mobData = {
@@ -681,8 +694,15 @@
                 this.currentBattleMobs.push(mobData);
             }
 
-            console.log(`[BattleMonitor] Przechwycono ${this.currentBattleMobs.length} mobów:`, this.currentBattleMobs);
-            this.notifySubscribers('mobsDetected', this.currentBattleMobs);
+            console.log(
+                `[BattleMonitor] Przechwycono ${this.currentBattleMobs.length} mobów:`,
+                this.currentBattleMobs
+            );
+
+            this.notifySubscribers(
+                'mobsDetected',
+                this.currentBattleMobs
+            );
         },
 
         checkBattleResult() {
