@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.4.1
+// @version      5.4.2
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -678,14 +678,11 @@
                     mobImage &&
                     !mobImage.startsWith('data:image/gif;base64')
                 ) {
-                    try {
-                        imageBase64 = await this.imageToBase64(mobImage);
-                    } catch (e) {
-                        console.warn(
-                            '[BattleMonitor] Nie udało się pobrać obrazka:',
-                            mobName
-                        );
-                    }
+                    // Reuse the already-loaded image URL directly instead of re-fetching
+                    // and base64-encoding it. This avoids a burst of network requests on
+                    // every battle (which competed with the game's API/websocket traffic
+                    // and spiked the ping) and keeps the persisted timer payload tiny.
+                    imageBase64 = mobImage;
                 }
 
                 const mobData = {
@@ -3145,12 +3142,16 @@
 
         toggle(enabled) {
             GM_setValue('killCounterEnabled', enabled);
+            // Store one bound reference so subscribe/unsubscribe target the SAME function.
+            // Previously each call created a new .bind(this), so unsubscribe never removed
+            // the handler → duplicate subscribers processing every battle.
+            this.boundBattleHandler ??= this.handleBattleEvent.bind(this);
             if (enabled) {
                 this.loadStats();
                 this.init();
-                BattleMonitor.subscribe(this.handleBattleEvent.bind(this));
+                BattleMonitor.subscribe(this.boundBattleHandler);
             } else {
-                BattleMonitor.unsubscribe(this.handleBattleEvent.bind(this));
+                BattleMonitor.unsubscribe(this.boundBattleHandler);
                 this.closePanel();
             }
         },
@@ -4340,11 +4341,23 @@
         },
 
         saveTimers() {
-            const toSave = {};
-            for (const [mobName, data] of this.timers.entries()) {
-                toSave[mobName] = data;
-            }
-            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(toSave));
+            // Debounce writes: coalesce rapid calls into a single localStorage write.
+            // Previously this ran a synchronous JSON.stringify + localStorage.setItem on
+            // every 1s tick (and carried heavy base64 images), blocking the main thread
+            // and stalling the game's network heartbeat → ping spikes / "Connection Lost".
+            if (this._saveTimeout) return;
+            this._saveTimeout = setTimeout(() => {
+                this._saveTimeout = null;
+                const toSave = {};
+                for (const [mobName, data] of this.timers.entries()) {
+                    toSave[mobName] = data;
+                }
+                try {
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(toSave));
+                } catch (e) {
+                    console.warn('[Minutnik] Błąd zapisu timerów:', e);
+                }
+            }, 1000);
         },
 
         loadTimers() {
@@ -4409,6 +4422,7 @@
             this.checkNpcsOnMap();
 
             const now = Date.now();
+            let changed = false;
             this.timersList.innerHTML = '';
 
             const sortedTimers = [...this.timers.entries()]
@@ -4428,6 +4442,7 @@
                     const audioUrl = GM_getValue('audioUrlMinutnik', 'https://files.catbox.moe/od2lcz.mp3');
                     Utils.playAudio(audioUrl);
                     this.timers.delete(mobName);
+                    changed = true;
                     if (this.timers.size === 0) {
                         clearInterval(this.globalInterval);
                         this.globalInterval = null;
@@ -4447,7 +4462,8 @@
                 this.renderStatus('Brak timerów do wyświetlenia');
             }
 
-            this.saveTimers();
+            // Only persist when a timer actually expired this tick — not every second.
+            if (changed) this.saveTimers();
             if (!GM_getValue('minutnikEnabled', false)) {
                 clearInterval(this.globalInterval);
                 this.globalInterval = null;
