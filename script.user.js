@@ -4114,8 +4114,20 @@
         timersList: null,
         globalInterval: null,
         STORAGE_KEY: 'minutnikTimers',
+        // Global (cross-world) storage key. GM_setValue is shared across every @match
+        // domain, so timers created on one world are visible on all of them.
+        STORAGE_KEY_GLOBAL: 'minutnikTimersGlobal',
         STORAGE_POS: 'positionPanelTimer',
         currentCharacter: null,
+        _rows: null,
+        _renderedSig: '',
+        _saveTimeout: null,
+
+        // Timers are keyed by world + mob name so the same boss on two different worlds
+        // gets its own entry (and its own relog target).
+        timerKey(world, mobName) {
+            return `${world || ''}::${mobName}`;
+        },
 
         toggle(enabled) {
             GM_setValue('minutnikEnabled', enabled);
@@ -4123,12 +4135,14 @@
             if (enabled) {
                 this.init();
                 this.loadTimers();
+                if (this.container) this.container.style.display = 'block';
                 this.boundBattleHandler ??= this.handleBattleEvent.bind(this);
                 BattleMonitor.subscribe(this.boundBattleHandler);
             } else {
                 if (this.boundBattleHandler) {
                     BattleMonitor.unsubscribe(this.boundBattleHandler);
                 }
+                if (this.container) this.container.style.display = 'none';
             }
         },
 
@@ -4234,9 +4248,12 @@
             ? structuredClone(this.currentCharacter)
             : null;
 
+            const world = characterSnapshot?.world || getCurrentWorld();
+
             for (const mob of mobs) {
-                if (this.timers.has(mob.name)) {
-                    this.timers.delete(mob.name);
+                const key = this.timerKey(world, mob.name);
+                if (this.timers.has(key)) {
+                    this.timers.delete(key);
                 }
 
                 const { minTime, maxTime } = this.calculateRespawnTime(
@@ -4252,7 +4269,8 @@
                     mob.rank,
                     mob.level,
                     characterSnapshot,
-                    mob.image
+                    mob.image,
+                    world
                 );
             }
         },
@@ -4308,12 +4326,16 @@
             };
         },
 
-        addTimer(minTime, maxTime, mobName, rank, mobLvl, character, mobImage) {
+        addTimer(minTime, maxTime, mobName, rank, mobLvl, character, mobImage, world) {
             const now = Date.now();
             const minEndTime = now + minTime * 1000;
             const maxEndTime = now + maxTime * 1000;
+            const resolvedWorld = world || character?.world || getCurrentWorld();
+            const key = this.timerKey(resolvedWorld, mobName);
 
-            this.timers.set(mobName, {
+            this.timers.set(key, {
+                mobName,
+                world: resolvedWorld,
                 minEndTime,
                 maxEndTime,
                 rank,
@@ -4341,19 +4363,20 @@
         },
 
         saveTimers() {
-            // Debounce writes: coalesce rapid calls into a single localStorage write.
-            // Previously this ran a synchronous JSON.stringify + localStorage.setItem on
-            // every 1s tick (and carried heavy base64 images), blocking the main thread
-            // and stalling the game's network heartbeat → ping spikes / "Connection Lost".
+            // Debounce writes: coalesce rapid calls into a single storage write.
+            // Previously this ran a synchronous JSON.stringify + storage write on every
+            // 1s tick (and carried heavy base64 images), blocking the main thread and
+            // stalling the game's network heartbeat → ping spikes / "Connection Lost".
             if (this._saveTimeout) return;
             this._saveTimeout = setTimeout(() => {
                 this._saveTimeout = null;
                 const toSave = {};
-                for (const [mobName, data] of this.timers.entries()) {
-                    toSave[mobName] = data;
+                for (const [key, data] of this.timers.entries()) {
+                    toSave[key] = data;
                 }
                 try {
-                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(toSave));
+                    // GM storage is shared across all worlds → global timer list.
+                    GM_setValue(this.STORAGE_KEY_GLOBAL, JSON.stringify(toSave));
                 } catch (e) {
                     console.warn('[Minutnik] Błąd zapisu timerów:', e);
                 }
@@ -4361,21 +4384,22 @@
         },
 
         loadTimers() {
-            const stored = JSON.parse(localStorage.getItem(this.STORAGE_KEY) || '{}');
+            let stored = {};
+            try {
+                stored = JSON.parse(GM_getValue(this.STORAGE_KEY_GLOBAL, '{}')) || {};
+            } catch (e) {
+                stored = {};
+            }
             const now = Date.now();
 
-            for (const mobName in stored) {
-                const { minEndTime, maxEndTime, rank, mobLvl, totalTime, mobImage, character } = stored[mobName];
-                if (maxEndTime > now) {
-                    this.timers.set(mobName, {
-                        minEndTime,
-                        maxEndTime,
-                        rank,
-                        mobLvl,
-                        totalTime,
-                        mobImage: mobImage || null,
-                        character: character || null
-                    });
+            for (const key in stored) {
+                const data = stored[key];
+                if (data && data.maxEndTime > now) {
+                    // Back-compat: derive mobName/world for entries saved before the
+                    // composite-key format existed.
+                    if (!data.mobName) data.mobName = key.includes('::') ? key.split('::').slice(1).join('::') : key;
+                    if (!data.world) data.world = key.includes('::') ? key.split('::')[0] : (data.character?.world || '');
+                    this.timers.set(key, data);
                 }
             }
 
@@ -4391,18 +4415,26 @@
 
             const now = Date.now();
             const GRACE_PERIOD = 15000;
+            const currentWorld = getCurrentWorld();
 
             const npcsOnMapNames = NpcsOnMap.npcs.map(npc => npc.name.toLowerCase());
             const timersToRemove = [];
 
-            for (const [mobName, data] of this.timers.entries()) {
+            for (const [key, data] of this.timers.entries()) {
                 if (data.addedAt && (now - data.addedAt) < GRACE_PERIOD) {
                     continue;
                 }
 
-                if (npcsOnMapNames.includes(mobName.toLowerCase())) {
-                    timersToRemove.push(mobName);
-                    console.log('[Minutnik] Mob pojawil sie na mapie:', mobName);
+                // The map only reflects the world we're currently on, so only clear
+                // timers belonging to this world.
+                if ((data.world || currentWorld) !== currentWorld) {
+                    continue;
+                }
+
+                const dispName = data.mobName || key;
+                if (npcsOnMapNames.includes(dispName.toLowerCase())) {
+                    timersToRemove.push(key);
+                    console.log('[Minutnik] Mob pojawil sie na mapie:', dispName);
                 }
             }
 
@@ -4410,8 +4442,8 @@
                 const audioUrl = GM_getValue('audioUrlMinutnik', 'https://files.catbox.moe/od2lcz.mp3');
                 Utils.playAudio(audioUrl);
 
-                for (const mobName of timersToRemove) {
-                    this.timers.delete(mobName);
+                for (const key of timersToRemove) {
+                    this.timers.delete(key);
                 }
 
                 this.saveTimers();
@@ -4423,50 +4455,69 @@
 
             const now = Date.now();
             let changed = false;
-            this.timersList.innerHTML = '';
 
-            const sortedTimers = [...this.timers.entries()]
-            .map(([mobName, data]) => ({
-                mobName,
+            // 1) Remove expired timers (these are the only mutations per tick).
+            for (const [key, data] of [...this.timers.entries()]) {
+                if (Math.floor((data.maxEndTime - now) / 1000) <= 0) {
+                    const audioUrl = GM_getValue('audioUrlMinutnik', 'https://files.catbox.moe/od2lcz.mp3');
+                    Utils.playAudio(audioUrl);
+                    this.timers.delete(key);
+                    changed = true;
+                }
+            }
+
+            // 2) Build the active, sorted list.
+            const active = [...this.timers.entries()]
+            .map(([key, data]) => ({
+                key,
                 data,
                 maxDiff: Math.floor((data.maxEndTime - now) / 1000)
             }))
             .filter(t => t.maxDiff > 0)
             .sort((a, b) => a.maxDiff - b.maxDiff);
 
-            for (const { mobName, data, maxDiff } of sortedTimers) {
-                const { minEndTime, maxEndTime, rank, mobLvl, totalTime } = data;
-                const minDiff = Math.floor((minEndTime - now) / 1000);
-
-                if (maxDiff <= 0) {
-                    const audioUrl = GM_getValue('audioUrlMinutnik', 'https://files.catbox.moe/od2lcz.mp3');
-                    Utils.playAudio(audioUrl);
-                    this.timers.delete(mobName);
-                    changed = true;
-                    if (this.timers.size === 0) {
-                        clearInterval(this.globalInterval);
-                        this.globalInterval = null;
-                        this.renderStatus('Brak timerów do wyświetlenia');
-                    }
-
-                    continue;
-                }
-
-                const timerElement = this.createTimerElement(mobName, rank, mobLvl, minDiff, maxDiff, totalTime);
-                this.timersList.appendChild(timerElement);
-            }
-
-            if (this.timers.size === 0) {
+            if (active.length === 0) {
                 clearInterval(this.globalInterval);
                 this.globalInterval = null;
+                this._renderedSig = '';
+                this._rows = null;
                 this.renderStatus('Brak timerów do wyświetlenia');
+                if (changed) this.saveTimers();
+                return;
             }
 
-            // Only persist when a timer actually expired this tick — not every second.
+            // 3) Only rebuild the DOM when the SET of timers (or the view mode) changes.
+            //    On a normal tick we just patch the time text of existing rows — this
+            //    avoids destroying/recreating dozens of nodes (and decoding images) every
+            //    second, which was stalling the main thread and dropping the connection.
+            const signature = active.map(t => t.key).join('|') + (this.compactMode ? '|c' : '|d');
+
+            if (signature !== this._renderedSig || !this._rows) {
+                this._renderedSig = signature;
+                this._rows = new Map();
+                this.timersList.innerHTML = '';
+                for (const { key, data } of active) {
+                    const minDiff = Math.floor((data.minEndTime - now) / 1000);
+                    const maxDiff = Math.floor((data.maxEndTime - now) / 1000);
+                    const el = this.createTimerElement(key, minDiff, maxDiff);
+                    this._rows.set(key, el);
+                    this.timersList.appendChild(el);
+                }
+            } else {
+                for (const { key, data } of active) {
+                    const minDiff = Math.floor((data.minEndTime - now) / 1000);
+                    const maxDiff = Math.floor((data.maxEndTime - now) / 1000);
+                    const el = this._rows.get(key);
+                    if (el && el._update) el._update(minDiff, maxDiff);
+                }
+            }
+
             if (changed) this.saveTimers();
             if (!GM_getValue('minutnikEnabled', false)) {
                 clearInterval(this.globalInterval);
                 this.globalInterval = null;
+                this._renderedSig = '';
+                this._rows = null;
                 if (this.container) this.container.style.display = 'none';
                 if (this.timersList) this.timersList.innerHTML = '';
             }
@@ -4547,16 +4598,53 @@
             return container;
         },
 
-        createTimerElement(mobName, rank, mobLvl, minDiff, maxDiff, totalTime) {
+        createTimerElement(key, minDiff, maxDiff) {
             if (this.compactMode) {
-                return this.createCompactTimerElement(mobName, rank, mobLvl, minDiff, maxDiff, totalTime);
+                return this.createCompactTimerElement(key, minDiff, maxDiff);
             } else {
-                return this.createDetailedTimerElement(mobName, rank, mobLvl, minDiff, maxDiff, totalTime);
+                return this.createDetailedTimerElement(key, minDiff, maxDiff);
             }
         },
 
-        createCompactTimerElement(mobName, rank, mobLvl, minDiff, maxDiff, totalTime) {
-            const data = this.timers.get(mobName);
+        // Small square showing the first frame of a character's 4x4 sprite sheet.
+        createCharacterSprite(character, size = 20) {
+            const wrap = document.createElement('div');
+            Object.assign(wrap.style, {
+                width: size + 'px', height: size + 'px', overflow: 'hidden',
+                borderRadius: '3px', border: '1px solid #1a4d0d', flexShrink: '0'
+            });
+            if (!character?.src) return wrap;
+
+            const sprite = document.createElement('div');
+            Object.assign(sprite.style, {
+                width: size + 'px', height: size + 'px',
+                backgroundImage: `url(${character.src})`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'left top',
+                imageRendering: 'pixelated'
+            });
+
+            const img = new Image();
+            img.onload = () => {
+                const frameW = img.naturalWidth / 4;
+                const frameH = img.naturalHeight / 4;
+                const scaleX = size / frameW;
+                const scaleY = size / frameH;
+                sprite.style.backgroundSize = `${img.naturalWidth * scaleX}px ${img.naturalHeight * scaleY}px`;
+            };
+            img.src = character.src;
+
+            wrap.appendChild(sprite);
+            return wrap;
+        },
+
+        createCompactTimerElement(key, minDiff, maxDiff) {
+            const data = this.timers.get(key);
+            const mobName = data?.mobName || key;
+            const rank = data?.rank;
+            const mobLvl = data?.mobLvl;
+            const totalTime = data?.totalTime || 1;
+            const world = data?.world || '';
 
             const row = document.createElement('div');
             Object.assign(row.style, {
@@ -4611,39 +4699,59 @@
             rankBadge.style.color = rankColors[rank] || '#fff';
             rankBadge.style.fontWeight = 'bold';
 
+            // Right-hand group: character graphic + world name + time-to-spawn.
+            const rightGroup = document.createElement('div');
+            Object.assign(rightGroup.style, {
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                marginLeft: 'auto'
+            });
+
+            if (data?.character) {
+                const sprite = this.createCharacterSprite(data.character, 18);
+                sprite.style.cursor = 'pointer';
+                sprite.title = `Przeloguj na ${data.character.name}${world ? ' (' + world + ')' : ''}`;
+                sprite.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    await this.switchToCharacter(data.character);
+                });
+                rightGroup.appendChild(sprite);
+            }
+
+            if (world) {
+                const worldSpan = document.createElement('span');
+                worldSpan.textContent = world;
+                Object.assign(worldSpan.style, {
+                    fontSize: '10px',
+                    color: '#7fd66a',
+                    fontWeight: '600'
+                });
+                rightGroup.appendChild(worldSpan);
+            }
+
             const time = document.createElement('span');
             Object.assign(time.style, {
-                marginLeft: 'auto',
                 fontFamily: 'monospace',
                 fontWeight: 'bold'
             });
 
-            if (minDiff > 0) {
-                time.textContent = formatTime(minDiff);
-                time.style.color = '#a0a0a0';
-                const percentRemaining = minDiff / totalTime;
-                if (percentRemaining <= 0.1) {
-                    time.textContent = formatTime(minDiff);
-                    time.style.color = '#ffffff';
-                }
-            } else {
-                const percentRemaining = maxDiff / totalTime;
-                if (percentRemaining <= 0.2) {
-                    time.textContent = formatTime(maxDiff);
-                    time.style.color = '#c12a11';
-                } else if (percentRemaining <= 0.5) {
-                    time.textContent = formatTime(maxDiff);
-                    time.style.color = '#d76f13';
+            // Patch only the time text/color on each tick (no DOM rebuild).
+            const applyTime = (minD, maxD) => {
+                if (minD > 0) {
+                    time.textContent = formatTime(minD);
+                    time.style.color = (minD / totalTime) <= 0.1 ? '#ffffff' : '#a0a0a0';
                 } else {
-                    time.textContent = formatTime(maxDiff);
-                    time.style.color = '#ebc21e';
+                    const pct = maxD / totalTime;
+                    time.textContent = formatTime(maxD);
+                    time.style.color = pct <= 0.2 ? '#c12a11' : (pct <= 0.5 ? '#d76f13' : '#ebc21e');
                 }
-            }
+            };
+            applyTime(minDiff, maxDiff);
 
             const remove = document.createElement('button');
             remove.textContent = '×';
             Object.assign(remove.style, {
-                marginLeft: '6px',
                 background: 'transparent',
                 border: 'none',
                 color: '#ff6666',
@@ -4653,47 +4761,26 @@
             });
 
             remove.addEventListener('click', () => {
-                Minutnik.timers.delete(mobName);
+                Minutnik.timers.delete(key);
                 Minutnik.saveTimers();
+                Minutnik._renderedSig = '';
                 Minutnik.updateAllTimers();
             });
 
-            let charName = null;
+            rightGroup.append(time, remove);
+            row.append(name, lvl, rankBadge, rightGroup);
 
-            if (data?.character?.name) {
-                charName = document.createElement('span');
-                charName.textContent = data.character.name;
-
-                Object.assign(charName.style, {
-                    fontSize: '11px',
-                    color: '#ffffff',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    padding: '1px 4px',
-                    borderRadius: '3px',
-                    transition: 'all 0.15s ease'
-                });
-
-                charName.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    await this.switchToCharacter(data.character);
-                });
-            }
-
-            row.append(
-                name,
-                lvl,
-                rankBadge,
-                ...(charName ? [charName] : []),
-                time,
-                remove
-            );
-
+            row._update = applyTime;
             return row;
         },
 
-        createDetailedTimerElement(mobName, rank, mobLvl, minDiff, maxDiff, totalTime) {
-            const data = this.timers.get(mobName);
+        createDetailedTimerElement(key, minDiff, maxDiff) {
+            const data = this.timers.get(key);
+            const mobName = data?.mobName || key;
+            const rank = data?.rank;
+            const mobLvl = data?.mobLvl;
+            const totalTime = data?.totalTime || 1;
+            const world = data?.world || '';
 
             const timerElement = document.createElement('div');
             Object.assign(timerElement.style, {
@@ -4773,6 +4860,16 @@
             nameRow.appendChild(nameSpan);
             nameRow.appendChild(lvlSpan);
 
+            // World name shown right after the level.
+            if (world) {
+                const worldSpan = document.createElement('span');
+                Object.assign(worldSpan.style, {
+                    color: '#7fd66a', fontSize: '12px', fontWeight: '600'
+                });
+                worldSpan.textContent = world;
+                nameRow.appendChild(worldSpan);
+            }
+
             const rankColors = {
                 HERO: '#ffc600',
                 TITAN: '#ff6c00',
@@ -4837,8 +4934,9 @@
                 removeBtn.style.transform = 'scale(1)';
             });
             removeBtn.addEventListener('click', () => {
-                this.timers.delete(mobName);
+                this.timers.delete(key);
                 this.saveTimers();
+                this._renderedSig = '';
                 this.updateAllTimers();
             });
 
@@ -4865,38 +4963,36 @@
                 fontFamily: 'monospace'
             });
 
-            if (minDiff > 0) {
-                timeLabel.textContent = 'Do minimalnego respu:';
-                Object.assign(timeLabel.style, { fontSize: '12px', color: '#a0a0a0' });
-                timeValue.textContent = formatTime(minDiff);
-                timeValue.style.color = '#a0a0a0';
+            // Patch only the time text/colors each tick instead of rebuilding the row.
+            const applyTime = (minD, maxD) => {
+                if (minD > 0) {
+                    timeLabel.textContent = 'Do minimalnego respu:';
+                    timeLabel.style.fontSize = '12px';
+                    timeValue.textContent = formatTime(minD);
 
-                const percentRemaining = minDiff / totalTime;
-                if (percentRemaining <= 0.1) {
-                    timeValue.style.color = '#ffffff';
-                    timeLabel.textContent = 'Do minimalnego respu';
-                    timeLabel.style.color = '#ffffff';
-                    timerElement.style.borderColor = '#ffffff';
-                }
-            } else {
-                const percentRemaining = maxDiff / totalTime;
-                timeLabel.textContent = 'Do maksymalnego respu: ';
-                timeValue.textContent = formatTime(maxDiff);
-
-                if (percentRemaining <= 0.2) {
-                    Object.assign(timeLabel.style, { fontSize: '12px', color: '#c12a11' });
-                    timeValue.style.color = '#c12a11';
-                    timerElement.style.borderColor = '#c12a11';
-                } else if (percentRemaining <= 0.5) {
-                    Object.assign(timeLabel.style, { fontSize: '12px', color: '#d76f13' });
-                    timeValue.style.color = '#d76f13';
-                    timerElement.style.borderColor = '#d76f13';
+                    if ((minD / totalTime) <= 0.1) {
+                        timeValue.style.color = '#ffffff';
+                        timeLabel.textContent = 'Do minimalnego respu';
+                        timeLabel.style.color = '#ffffff';
+                        timerElement.style.borderColor = '#ffffff';
+                    } else {
+                        timeValue.style.color = '#a0a0a0';
+                        timeLabel.style.color = '#a0a0a0';
+                        timerElement.style.borderColor = '#1a4d0d';
+                    }
                 } else {
-                    Object.assign(timeLabel.style, { fontSize: '12px', color: '#ebc21e' });
-                    timeValue.style.color = '#ebc21e';
-                    timerElement.style.borderColor = '#ebc21e';
+                    const pct = maxD / totalTime;
+                    timeLabel.textContent = 'Do maksymalnego respu: ';
+                    timeLabel.style.fontSize = '12px';
+                    timeValue.textContent = formatTime(maxD);
+
+                    const color = pct <= 0.2 ? '#c12a11' : (pct <= 0.5 ? '#d76f13' : '#ebc21e');
+                    timeLabel.style.color = color;
+                    timeValue.style.color = color;
+                    timerElement.style.borderColor = color;
                 }
-            }
+            };
+            applyTime(minDiff, maxDiff);
 
             timeRow.appendChild(timeLabel);
             timeRow.appendChild(timeValue);
@@ -4908,6 +5004,7 @@
                 timerElement.appendChild(charRow);
             }
 
+            timerElement._update = applyTime;
             return timerElement;
         },
 
