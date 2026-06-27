@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.4.4
+// @version      5.5.1
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -7012,14 +7012,14 @@
 
         buildCSS(t) {
             const ALL_PANELS = `#addon-panel, #settings-popup, #frame-editor-popup, #ui-themer-popup,
-                #kill-counter-panel, #npcs-on-map-panel, #items-on-map-panel,
+                #kill-counter-panel, #killcounter-edit-popup, #npcs-on-map-panel, #items-on-map-panel,
                 #players-on-map-panel, #legend-loot-panel, #character-switcher-panel,
                 #minutnik-container, #auto-arrow-refill-panel`;
 
             // Expand panel list for descendant selectors (CSS doesn't allow "a, b child" shorthand)
             const PANEL_IDS = [
                 '#addon-panel', '#settings-popup', '#frame-editor-popup', '#ui-themer-popup',
-                '#kill-counter-panel', '#npcs-on-map-panel', '#items-on-map-panel',
+                '#kill-counter-panel', '#killcounter-edit-popup', '#npcs-on-map-panel', '#items-on-map-panel',
                 '#players-on-map-panel', '#legend-loot-panel', '#character-switcher-panel',
                 '#minutnik-container', '#auto-arrow-refill-panel'
             ];
