@@ -1,16 +1,18 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.3.6
+// @version      5.4.1
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
 // @match        https://world-legacy.margatron.ovh/*
+// @match        https://world-ataenstic.margatron.ovh/*
 // @icon         https://imgur.com/ek1t4dN.png
 // @updateURL    https://raw.githubusercontent.com/MarekBoj/panel-dotatkow-margatron-premium/main/script.user.js
 // @downloadURL  https://raw.githubusercontent.com/MarekBoj/panel-dotatkow-margatron-premium/main/script.user.js
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @grant        unsafeWindow
 // ==/UserScript==
 
 (function () {
@@ -67,8 +69,15 @@
     waitForToken();
 
     // ======================== GRAPHQL MANAGER ========================
+    const getCurrentWorld = () =>
+    window.location.hostname
+    .replace('world-', '')
+    .replace('.margatron.ovh', '');
+
     const GraphQLManager = {
-        API_URL: 'https://engine-retro.margatron.ovh/graphql',
+        getApiUrl() {
+            return `https://engine-${getCurrentWorld()}.margatron.ovh/graphql`;
+        },
 
         getToken() {
             return authToken;
@@ -76,33 +85,29 @@
 
         async query(queryString) {
             const token = this.getToken();
+
             if (!token) {
-                console.warn('[GraphQLManager] Brak tokena autoryzacji');
                 throw new Error('Brak tokena autoryzacji');
             }
 
-            try {
-                const res = await fetch(this.API_URL, {
-                    method: "POST",
-                    headers: {
-                        "content-type": "application/json",
-                        "authorization": token
-                    },
-                    body: JSON.stringify({ query: queryString })
-                });
+            const res = await fetch(this.getApiUrl(), {
+                method: 'POST',
+                headers: {
+                    'content-type': 'application/json',
+                    'authorization': token
+                },
+                body: JSON.stringify({
+                    query: queryString
+                })
+            });
 
-                const json = await res.json();
+            const json = await res.json();
 
-                if (json.errors) {
-                    console.error('[GraphQLManager] GraphQL Errors:', json.errors);
-                    throw new Error('GraphQL Error: ' + JSON.stringify(json.errors));
-                }
-
-                return json.data;
-            } catch (e) {
-                console.error('[GraphQLManager] Błąd zapytania:', e);
-                throw e;
+            if (json.errors) {
+                throw new Error(JSON.stringify(json.errors));
             }
+
+            return json.data;
         }
     };
 
@@ -595,7 +600,7 @@
             }
         },
 
-                async captureMobData() {
+        async captureMobData() {
             const battleWindow = document.querySelector('.battle-window');
             if (!battleWindow) return;
 
@@ -2537,7 +2542,7 @@
         }
     };
 
-// ======================== AUTOHEAL ========================
+    // ======================== AUTOHEAL ========================
     const AutoHeal = {
         toggle(enabled) {
             GM_setValue('autoHealEnabled', enabled);
@@ -2833,11 +2838,12 @@
             const worldNames = {
                 'retro': 'Retro',
                 'legacy': 'Legacy',
-                'classic': 'Classic'
+                'classic': 'Classic',
+                'ataenstic': 'Ataenstic',
             };
 
             const sortedWorlds = Object.keys(worlds).sort((a, b) => {
-                const order = { 'retro': 0, 'legacy': 1, 'classic': 2 };
+                const order = { 'retro': 0, 'legacy': 1, 'classic': 2, 'Ataenstic': 3};
                 return (order[a] || 99) - (order[b] || 99);
             });
 
@@ -3051,9 +3057,12 @@
 
                 if (joinRes.ok && joinData) {
                     MessageCanvas.show(character.name, "Przełączono na: ", '#ffd700');
+
+                    const targetWorld = character.world || character.world_name || 'retro';
+
                     setTimeout(() => {
-                        window.location.href = 'https://world-retro.margatron.ovh/';
-                    }, 500);
+                        window.location.assign(`https://world-${targetWorld}.margatron.ovh/`);
+                    }, 2500);
                 } else {
                     MessageCanvas.show('Błąd', `Nie udało się przełączyć: ${joinData?.message || 'Nieznany błąd'}`, '#ffd700');
                 }
@@ -4103,6 +4112,7 @@
         compactMode: false,
         timersList: null,
         globalInterval: null,
+        STORAGE_KEY: 'minutnikTimers',
         STORAGE_POS: 'positionPanelTimer',
         currentCharacter: null,
 
@@ -4110,24 +4120,14 @@
             GM_setValue('minutnikEnabled', enabled);
 
             if (enabled) {
-                this.loadTimers();
                 this.init();
-                this.cacheCurrentCharacter();
-                BattleMonitor.subscribe(this.handleBattleEvent.bind(this));
+                this.loadTimers();
+                this.boundBattleHandler ??= this.handleBattleEvent.bind(this);
+                BattleMonitor.subscribe(this.boundBattleHandler);
             } else {
-                BattleMonitor.unsubscribe(this.handleBattleEvent.bind(this));
-
-                if (this.globalInterval) {
-                    clearInterval(this.globalInterval);
-                    this.globalInterval = null;
+                if (this.boundBattleHandler) {
+                    BattleMonitor.unsubscribe(this.boundBattleHandler);
                 }
-
-                if (this.container) {
-                    this.container.remove();
-                    this.container = null;
-                }
-
-                this.timersList = null;
             }
         },
 
@@ -4167,13 +4167,19 @@
                 const currentChar = characters.find(c => c.id === gameInfo.characterId);
 
                 if (currentChar) {
+                    const currentWorld = window.location.hostname
+                    .replace('world-', '')
+                    .replace('.margatron.ovh', '');
+
                     this.currentCharacter = {
                         id: currentChar.id,
                         name: currentChar.name,
                         src: currentChar.src,
                         profession: currentChar.profession,
-                        lvl: currentChar.lvl
+                        lvl: currentChar.lvl,
+                        world: currentChar.world || currentChar.world_name || currentWorld
                     };
+
                     console.log('[Minutnik] Postać zcachowana:', this.currentCharacter.name);
                 }
             } catch (e) {
@@ -4218,24 +4224,35 @@
             }
         },
 
-        addTimersForMobs(mobs) {
-            if (!mobs || mobs.length === 0) {
-                console.log('[Minutnik] Brak mobów do dodania');
-                return;
-            }
+        async addTimersForMobs(mobs) {
+            if (!mobs || mobs.length === 0) return;
 
-            console.log('[Minutnik] Dodawanie timerów dla mobów:', mobs);
+            await this.cacheCurrentCharacter();
+
+            const characterSnapshot = this.currentCharacter
+            ? structuredClone(this.currentCharacter)
+            : null;
 
             for (const mob of mobs) {
                 if (this.timers.has(mob.name)) {
-                    console.log('[Minutnik] Timer dla', mob.name, 'już istnieje - resetuję');
                     this.timers.delete(mob.name);
                 }
 
-                const { minTime, maxTime } = this.calculateRespawnTime(mob.level, mob.rank, mob.name);
+                const { minTime, maxTime } = this.calculateRespawnTime(
+                    mob.level,
+                    mob.rank,
+                    mob.name
+                );
 
-                this.addTimer(minTime, maxTime, mob.name, mob.rank, mob.level, this.currentCharacter, mob.image);
-                console.log('[Minutnik] Dodano timer dla:', mob.name, 'min:', minTime, 'max:', maxTime);
+                this.addTimer(
+                    minTime,
+                    maxTime,
+                    mob.name,
+                    mob.rank,
+                    mob.level,
+                    characterSnapshot,
+                    mob.image
+                );
             }
         },
 
@@ -5042,10 +5059,13 @@
 
                 if (joinRes.ok && joinData) {
                     MessageCanvas.show(character.name, "Przełączono na: ", '#ffd700');
+
+                    const targetWorld = character.world_name || character.world || 'retro';
+
                     setTimeout(() => {
-                        window.location.href = 'https://world-retro.margatron.ovh/';
-                    }, 500);
-                } else {
+                        window.location.assign(`https://world-${targetWorld}.margatron.ovh/`);
+                    }, 2500);
+                }else {
                     MessageCanvas.show('Błąd', `Nie udało się przełączyć: ${joinData?.message || 'Nieznany błąd'}`, '#ffd700');
                 }
             } catch (err) {
@@ -6896,12 +6916,12 @@
             // so [style*="#hex"] never matches. We must include both hex AND rgb forms.
             // innerHTML-parsed styles keep the original hex, so both are needed regardless.
             const matchInline = (tag, ...pairs) =>
-                PANEL_IDS.flatMap(id =>
-                    pairs.flatMap(([hex, rgb]) => [
-                        `${id} ${tag}[style*="${hex}"]`,
-                        `${id} ${tag}[style*="${rgb}"]`
-                    ])
-                ).join(', ');
+            PANEL_IDS.flatMap(id =>
+                              pairs.flatMap(([hex, rgb]) => [
+                `${id} ${tag}[style*="${hex}"]`,
+                `${id} ${tag}[style*="${rgb}"]`
+            ])
+                             ).join(', ');
 
             // Buttons in all panels — skip explicit red/danger buttons
             const allBtns     = PANEL_IDS.map(id => `${id} button:not([style*="255,0,0"]):not([style*="#ff0000"])`).join(', ');
@@ -6952,9 +6972,9 @@
                    ANY element whose inline style contains #1a4d0d or the
                    rgb-normalized form rgb(26, 77, 13).                       */
                 ${matchInline('',
-                    ['#1a4d0d', 'rgb(26, 77, 13)'],
-                    ['#2d7a1a', 'rgb(45, 122, 26)']
-                )} {
+                              ['#1a4d0d', 'rgb(26, 77, 13)'],
+                              ['#2d7a1a', 'rgb(45, 122, 26)']
+                             )} {
                     border-color: ${t.border} !important;
                 }
 
@@ -6966,17 +6986,17 @@
                 /* ── bgDarker elements (section rows, cards, popups) ───────
                    Both hex literal (from innerHTML) and rgb() (from CSSOM). */
                 ${matchInline('',
-                    ['#061d02', 'rgb(6, 29, 2)'],
-                    ['#0b2505', 'rgb(11, 37, 5)']
-                )} {
+                              ['#061d02', 'rgb(6, 29, 2)'],
+                              ['#0b2505', 'rgb(11, 37, 5)']
+                             )} {
                     background: ${t.bgDarker} !important;
                     border-color: ${t.border} !important;
                 }
 
                 /* ── bgInput elements (icon wrappers, secondary buttons) ── */
                 ${matchInline('',
-                    ['#10240a', 'rgb(16, 36, 10)']
-                )} {
+                              ['#10240a', 'rgb(16, 36, 10)']
+                             )} {
                     background: ${t.bgInput} !important;
                     border-color: ${t.border} !important;
                 }
@@ -6984,8 +7004,8 @@
                 /* ── Accent-colored borders (#4CAF50 / rgba(76,175,80,…)) ─
                    Character switcher active card, world-switch buttons etc. */
                 ${matchInline('',
-                    ['#4CAF50', 'rgb(76, 175, 80)']
-                )} {
+                              ['#4CAF50', 'rgb(76, 175, 80)']
+                             )} {
                     border-color: ${t.accent} !important;
                 }
                 ${PANEL_IDS.map(id => `${id} [style*="rgba(76, 175, 80"]`).join(', ')} {
@@ -7086,19 +7106,19 @@
                 ${ALL_PANELS} * { color: ${t.text}; }
                 /* Sub-text: CSSOM rgb() form and innerHTML hex form */
                 ${matchInline('',
-                    ['#a0a0a0', 'rgb(160, 160, 160)']
-                )} {
+                              ['#a0a0a0', 'rgb(160, 160, 160)']
+                             )} {
                     color: ${t.textSub} !important;
                 }
                 /* Primary text from innerHTML hex (not rgb-normalised by HTML parser) */
                 ${PANEL_IDS.map(id =>
-                    `${id} [style*="color:#e0e0e0"], ${id} [style*="color: #e0e0e0"]`
-                ).join(', ')} {
+                                `${id} [style*="color:#e0e0e0"], ${id} [style*="color: #e0e0e0"]`
+                               ).join(', ')} {
                     color: ${t.text} !important;
                 }
                 ${PANEL_IDS.map(id =>
-                    `${id} [style*="color:#888"], ${id} [style*="color: #888"]`
-                ).join(', ')} {
+                                `${id} [style*="color:#888"], ${id} [style*="color: #888"]`
+                               ).join(', ')} {
                     color: ${t.textSub} !important;
                 }
             `;
@@ -7379,17 +7399,23 @@
     // ======================== AUTO ARROW REFILL ========================
     const AutoArrowRefill = {
         panel: null,
-        STORAGE_KEY: 'autoArrowRefillPos',
-        savedArrow: null,       // { baseItemId, src, name, rarity }
+        savedArrow: null,
         currentProfession: null,
         _draggedItem: null,
         _dragTracking: false,
 
         toggle(enabled) {
             GM_setValue('autoArrowRefillEnabled', enabled);
+
             if (enabled) {
                 this.init();
-                this.startPolling();
+
+                if (!this.pollingInterval) {
+                    this.pollingInterval = setInterval(() => {
+                        if (!document.querySelector('#game-map-window')) return;
+                        this.checkArrowSlot();
+                    }, 1000);
+                }
             } else {
                 this.stopPolling();
                 this.closePanel();
@@ -7397,14 +7423,12 @@
         },
 
         init() {
-            // Load saved arrow BEFORE creating panel so updateSlotDisplay has data
             const saved = GM_getValue('autoArrowRefillItem', '');
             if (saved) {
                 try { this.savedArrow = JSON.parse(saved); } catch(e) { this.savedArrow = null; }
             }
             if (!this.panel) this.createPanel();
             this.setupDragTracking();
-            this.fetchProfession();
         },
 
         async fetchProfession() {
@@ -7489,7 +7513,7 @@
             Object.assign(divider.style, {
                 borderTop: `1px solid ${t.border}`, marginBottom: '8px'
             });
-            
+
             this.panel.appendChild(divider);
 
             const slotLabel = document.createElement('div');
@@ -7531,7 +7555,6 @@
                 const baseItemId = inner?.baseItemId || inner?.id;
                 if (!baseItemId) return;
 
-                // Only accept items with category 'arrows'
                 if ((inner?.category || '').toLowerCase() !== 'arrows') {
                     MessageCanvas.show('Błąd slotu', 'To nie są strzały!', '#ff4444');
                     return;
@@ -7559,7 +7582,6 @@
                 this.updateSlotDisplay(slot, slotHint, statusEl);
             });
 
-            // Hover highlight on the slot
             slot.addEventListener('mouseenter', () => {
                 slot.style.borderColor = t.accent;
                 slot.style.borderStyle = 'solid';
@@ -7569,7 +7591,6 @@
                 slot.style.borderStyle = 'dashed';
             });
 
-            // Right-click to clear slot
             slot.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 this.savedArrow = null;
@@ -7582,14 +7603,11 @@
         },
 
         updateSlotDisplay(slot, slotHint, statusEl) {
-            // Clear previous item display
             slot.querySelectorAll('.arrow-slot-icon').forEach(el => el.remove());
 
             if (this.savedArrow) {
-                // Hide hint text
                 if (slotHint) slotHint.style.display = 'none';
 
-                // Item wrapper with Highlights border class
                 const wrapper = document.createElement('div');
                 wrapper.className = `arrow-refill-slot-item ${this.savedArrow.rarity || 'common'}`;
                 Object.assign(wrapper.style, {
@@ -7640,28 +7658,33 @@
         },
 
         checkArrowSlot() {
+            if (!GM_getValue('autoArrowRefillEnabled', false)) return;
             if (!this.savedArrow) return;
-            // Only run for hunter profession ('h' = Łowca)
-            if (this.currentProfession && this.currentProfession !== 'h') return;
-            // If battle is active, don't interfere
             if (document.querySelector('.battle-window')) return;
-            // Check if arrow slot is already filled
-            const arrowInSlot = document.querySelector('.equipment-grid [data-key="8"]');
-            if (arrowInSlot) return;
 
-            // Find matching item in bag
-            const bagItems = document.querySelectorAll('#bag .items .item');
+            // jeżeli profesja jest znana i NIE jest łowcą, stop
+            if (this.currentProfession && this.currentProfession !== 'h') return;
+
+            const arrowSlot = document.querySelector('.equipment-grid [data-key="8"]');
+            const arrowItemInSlot = arrowSlot?.querySelector('[data-item], .item');
+
+            if (arrowItemInSlot) return;
+
+            const bagItems = document.querySelectorAll('#bag .items .item[data-item], #bag [data-item].item');
+
             for (const item of bagItems) {
                 const data = Utils.parseItemData(item);
                 if (!data) continue;
+
                 const inner = data.schema?.inner;
                 const itemId = inner?.baseItemId || inner?.id;
-                if (itemId && itemId === this.savedArrow.baseItemId) {
+
+                if (String(itemId) === String(this.savedArrow.baseItemId)) {
                     const equipmentGrid = document.querySelector('.equipment-grid');
-                    if (equipmentGrid) {
-                        Utils.moveItemToRandomPosition(item, equipmentGrid);
-                        MessageCanvas.show(this.savedArrow.name || 'Strzały', 'Uzupełniono: ', '#ffd700');
-                    }
+                    if (!equipmentGrid) return;
+
+                    Utils.moveItemToRandomPosition(item, equipmentGrid);
+                    MessageCanvas.show(this.savedArrow.name || 'Strzały', 'Uzupełniono: ', '#ffd700');
                     break;
                 }
             }
@@ -9023,7 +9046,10 @@
     // ======================== INICJALIZACJA ========================
     window.addEventListener('load', () => {
         HotKeys.init();
-        Minutnik.init();
+        if (GM_getValue('minutnikEnabled', false)) {
+            Minutnik.init();
+        }
+
         KillCounter.init();
         AutoSeller.init();
         const needsBattleMonitor = GM_getValue('killCounterEnabled', false) ||
