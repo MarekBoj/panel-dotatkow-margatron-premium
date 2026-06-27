@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.5.3
+// @version      5.5.4
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -289,6 +289,7 @@
         CHARS_TTL: 5 * 60 * 1000,   // character list is account-level and rarely changes
         _charsPromise: null,
         _idPromise: null,
+        _currentId: null,           // memoized for the page session (id is constant per load)
 
         _readGame() {
             try {
@@ -345,11 +346,18 @@
             return this._charsPromise;
         },
 
-        // The active character id changes on every relog, so this is NOT persisted.
-        // Prefer the in-page game object (no network) and only fall back to a fetch.
+        // The active character id is constant for a given page load, so it's memoized
+        // in-memory: every caller (Minutnik pre-warm, CharacterSwitcher, AutoArrowRefill)
+        // shares ONE resolution. Previously each could hit /game-credentials separately,
+        // and those extra REST calls during load were dropping the game connection.
         async getCurrentCharacterId() {
+            if (this._currentId != null) return this._currentId;
+
             const g = this._readGame();
-            if (g && g.current_character_id) return g.current_character_id;
+            if (g && g.current_character_id) {
+                this._currentId = g.current_character_id;
+                return this._currentId;
+            }
 
             if (this._idPromise) return this._idPromise;
 
@@ -361,7 +369,9 @@
                     });
                     if (!res.ok) return null;
                     const info = await res.json();
-                    return info?.characterId ?? null;
+                    const id = info?.characterId ?? null;
+                    if (id != null) this._currentId = id;
+                    return id;
                 } catch (e) {
                     return null;
                 } finally {
@@ -2826,7 +2836,7 @@
                 }
 
                 this.gameInfo = { characterId };
-                const currentChar = this.characters.find(c => c.id === characterId);
+                const currentChar = this.characters.find(c => String(c.id) === String(characterId));
                 console.log('[CharacterSwitcher] Aktualne ID postaci:', characterId);
                 this.currentWorld = currentChar?.world_name || 'retro';
 
@@ -2991,7 +3001,7 @@
         },
 
         createCharacterElement(character) {
-            const isCurrentCharacter = this.gameInfo && this.gameInfo.characterId === character.id;
+            const isCurrentCharacter = this.gameInfo && String(this.gameInfo.characterId) === String(character.id);
             const container = document.createElement('div');
 
             if (isCurrentCharacter) {
@@ -4238,7 +4248,7 @@
 
                     if (!characterId || !characters.length) return;
 
-                    const currentChar = characters.find(c => c.id === characterId);
+                    const currentChar = characters.find(c => String(c.id) === String(characterId));
                     if (currentChar) {
                         const currentWorld = getCurrentWorld();
                         this.currentCharacter = {
@@ -7829,20 +7839,25 @@
             // jeżeli profesja jest znana i NIE jest łowcą, stop
             if (this.currentProfession && this.currentProfession !== 'h') return;
 
-            const arrowSlot = document.querySelector('.equipment-grid [data-key="8"]');
-            // If we can't even locate the arrow slot, do nothing rather than blindly refill.
-            if (!arrowSlot) return;
+            const equipmentGrid = document.querySelector('.equipment-grid');
+            if (!equipmentGrid) return;
 
-            // Treat the slot as occupied when the equipped arrows are represented either as
-            // the slot element itself (it carries data-item), as a child .item/[data-item],
-            // or simply as a rendered icon (img). Previously only a child [data-item]/.item
-            // was checked, so arrows shown directly on the slot element were missed and the
-            // script kept dumping more arrows from the bag even though they were equipped.
-            const slotOccupied =
-                arrowSlot.matches('[data-item], .item') ||
-                !!arrowSlot.querySelector('[data-item], .item, img');
-
-            if (slotOccupied) return;
+            // Are arrows already equipped? Scan EVERY equipped item (including the slot
+            // element itself, which is what carries data-item for the arrow slot) and read
+            // its parsed data. If any equipped item is in the "arrows" category — or matches
+            // our saved arrow id — the slot is filled, so do nothing. This replaces the old
+            // descendant-only / img-based check that either missed equipped arrows (causing
+            // endless refilling) or false-matched an empty slot's placeholder icon.
+            const equippedEls = equipmentGrid.querySelectorAll('[data-item], .item');
+            for (const el of equippedEls) {
+                const inner = Utils.parseItemData(el)?.schema?.inner;
+                if (!inner) continue;
+                const cat = (inner.category || '').toLowerCase();
+                const id = inner.baseItemId || inner.id;
+                if (cat === 'arrows' || String(id) === String(this.savedArrow.baseItemId)) {
+                    return; // arrows already equipped → nothing to refill
+                }
+            }
 
             const bagItems = document.querySelectorAll('#bag .items .item[data-item], #bag [data-item].item');
 
@@ -7854,9 +7869,6 @@
                 const itemId = inner?.baseItemId || inner?.id;
 
                 if (String(itemId) === String(this.savedArrow.baseItemId)) {
-                    const equipmentGrid = document.querySelector('.equipment-grid');
-                    if (!equipmentGrid) return;
-
                     Utils.moveItemToRandomPosition(item, equipmentGrid);
                     MessageCanvas.show(this.savedArrow.name || 'Strzały', 'Uzupełniono: ', '#ffd700');
                     break;
