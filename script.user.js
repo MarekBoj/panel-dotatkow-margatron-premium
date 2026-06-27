@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.5.1
+// @version      5.5.3
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -281,6 +281,98 @@
         },
     };
 
+    // ======================== API CACHE ========================
+    // Central cache + in-flight dedupe for the character REST endpoints. Several
+    // addons used to fetch the SAME character list independently (and on the kill
+    // path), flooding the connection. This serves one shared, cached copy instead.
+    const ApiCache = {
+        CHARS_TTL: 5 * 60 * 1000,   // character list is account-level and rarely changes
+        _charsPromise: null,
+        _idPromise: null,
+
+        _readGame() {
+            try {
+                const g = (typeof unsafeWindow !== 'undefined' && unsafeWindow.game)
+                    ? unsafeWindow.game
+                    : (typeof window !== 'undefined' ? window.game : null);
+                return g || null;
+            } catch (e) {
+                return null;
+            }
+        },
+
+        // Persisted across reloads (GM storage) so a relog doesn't re-fetch the list.
+        async getCharacters(force = false) {
+            if (!force) {
+                try {
+                    const raw = GM_getValue('cachedCharacters', null);
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        if (parsed && Array.isArray(parsed.list) &&
+                            (Date.now() - parsed.ts) < this.CHARS_TTL) {
+                            return parsed.list;
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+            }
+
+            if (this._charsPromise) return this._charsPromise;
+
+            this._charsPromise = (async () => {
+                try {
+                    const res = await fetch(CONFIG.API.CHARACTERS, {
+                        credentials: 'include',
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    if (!res.ok) {
+                        console.error('[ApiCache] characters status:', res.status);
+                        return [];
+                    }
+                    const list = await res.json();
+                    if (Array.isArray(list)) {
+                        try { GM_setValue('cachedCharacters', JSON.stringify({ list, ts: Date.now() })); } catch (e) {}
+                        return list;
+                    }
+                    return [];
+                } catch (e) {
+                    console.error('[ApiCache] characters error:', e);
+                    return [];
+                } finally {
+                    this._charsPromise = null;
+                }
+            })();
+
+            return this._charsPromise;
+        },
+
+        // The active character id changes on every relog, so this is NOT persisted.
+        // Prefer the in-page game object (no network) and only fall back to a fetch.
+        async getCurrentCharacterId() {
+            const g = this._readGame();
+            if (g && g.current_character_id) return g.current_character_id;
+
+            if (this._idPromise) return this._idPromise;
+
+            this._idPromise = (async () => {
+                try {
+                    const res = await fetch(CONFIG.API.CURRENTCHARACTER, {
+                        credentials: 'include',
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    if (!res.ok) return null;
+                    const info = await res.json();
+                    return info?.characterId ?? null;
+                } catch (e) {
+                    return null;
+                } finally {
+                    this._idPromise = null;
+                }
+            })();
+
+            return this._idPromise;
+        }
+    };
+
     const Utils = {
         simulateKeyPress(key, code, keyCode) {
             const opts = { key, code, keyCode, which: keyCode, bubbles: true, cancelable: true };
@@ -517,7 +609,15 @@
     const BattleMonitor = {
         currentBattleMobs: [],
         inBattle: false,
+        lastBattleEndTs: 0,
         subscribers: new Set(),
+
+        // "Busy" = during a fight and for a short window after it, while the game is
+        // resolving the kill/loot/XP/map refresh. Background pollers skip these moments
+        // so they don't pile network requests onto the connection's busiest point.
+        isBusy() {
+            return this.inBattle || (Date.now() - this.lastBattleEndTs) < 1500;
+        },
 
         subscribe(callback) {
             this.subscribers.add(callback);
@@ -595,6 +695,7 @@
                 setTimeout(() => this.captureMobData(), 100);
             } else if (!battleWindow && this.inBattle) {
                 this.inBattle = false;
+                this.lastBattleEndTs = Date.now();
                 console.log('[BattleMonitor] Walka zakończona');
                 setTimeout(() => this.checkBattleResult(), 500);
             }
@@ -1163,6 +1264,8 @@
         },
 
         async loadNpcs() {
+            // Don't poll while a fight is resolving — the map isn't visible then anyway.
+            if (BattleMonitor.isBusy()) return;
             const token = GraphQLManager.getToken();
             if (!token) {
                 this.renderStatus('Czekam na token');
@@ -1658,6 +1761,7 @@
         },
 
         async loadItems() {
+            if (BattleMonitor.isBusy()) return;
             const token = GraphQLManager.getToken();
             if (!token) {
                 this.renderStatus('Czekam na token');
@@ -2097,6 +2201,7 @@
         },
 
         async loadPlayers() {
+            if (BattleMonitor.isBusy()) return;
             const token = GraphQLManager.getToken();
             if (!token) {
                 this.renderStatus('Czekam na token');
@@ -2709,25 +2814,10 @@
 
         async init() {
             try {
-                if (window.game && window.game.current_character_id) {
-                    this.currentCharacterId = window.game.current_character_id;
-                }
-
-                const res = await fetch(CONFIG.API.CHARACTERS, {
-                    credentials: 'include',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                if (!res.ok) {
-                    console.error('[CharacterSwitcher] Status:', res.status, res.statusText);
-                    MessageCanvas.show('Błąd', `Nie udało się pobrać postaci (${res.status})`, '#ffd700');
-                    return;
-                }
-
-                this.characters = await res.json();
+                // Shared cache → reuses the list Minutnik already pre-warmed (no duplicate fetch).
+                const characterId = await ApiCache.getCurrentCharacterId();
+                this.currentCharacterId = characterId;
+                this.characters = await ApiCache.getCharacters();
 
                 if (!Array.isArray(this.characters) || this.characters.length === 0) {
                     console.warn('[CharacterSwitcher] Brak postaci do wyświetlenia');
@@ -2735,23 +2825,9 @@
                     return;
                 }
 
-                const resCurrent = await fetch(CONFIG.API.CURRENTCHARACTER, {
-                    credentials: 'include',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                if (!resCurrent.ok) {
-                    console.error('[CharacterSwitcher] Status:', resCurrent.status, resCurrent.statusText);
-                    MessageCanvas.show('Błąd', `Nie udało się pobrać aktualnej postaci (${resCurrent.status})`, '#ffd700');
-                    return;
-                }
-
-                this.gameInfo = await resCurrent.json();
-                const currentChar = this.characters.find(c => c.id === this.gameInfo.characterId);
-                console.log('[CharacterSwitcher] Aktualne ID postaci:', this.gameInfo.characterId);
+                this.gameInfo = { characterId };
+                const currentChar = this.characters.find(c => c.id === characterId);
+                console.log('[CharacterSwitcher] Aktualne ID postaci:', characterId);
                 this.currentWorld = currentChar?.world_name || 'retro';
 
                 this.createPanel();
@@ -4138,6 +4214,9 @@
                 if (this.container) this.container.style.display = 'block';
                 this.boundBattleHandler ??= this.handleBattleEvent.bind(this);
                 BattleMonitor.subscribe(this.boundBattleHandler);
+                // Pre-warm the character cache while idle so the FIRST kill after a relog
+                // doesn't trigger REST fetches mid-battle (the cause of the ping spikes).
+                setTimeout(() => this.cacheCurrentCharacter(), 2500);
             } else {
                 if (this.boundBattleHandler) {
                     BattleMonitor.unsubscribe(this.boundBattleHandler);
@@ -4148,58 +4227,38 @@
 
         async cacheCurrentCharacter() {
             if (this.currentCharacter) return;
+            if (this._cachingPromise) return this._cachingPromise;
 
-            try {
-                const resCurrent = await fetch(CONFIG.API.CURRENTCHARACTER, {
-                    credentials: 'include',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
+            this._cachingPromise = (async () => {
+                try {
+                    // Uses ApiCache → the character list is shared/cached (no extra fetch on
+                    // most relogs) and the id comes from the in-page game object when possible.
+                    const characterId = await ApiCache.getCurrentCharacterId();
+                    const characters = await ApiCache.getCharacters();
+
+                    if (!characterId || !characters.length) return;
+
+                    const currentChar = characters.find(c => c.id === characterId);
+                    if (currentChar) {
+                        const currentWorld = getCurrentWorld();
+                        this.currentCharacter = {
+                            id: currentChar.id,
+                            name: currentChar.name,
+                            src: currentChar.src,
+                            profession: currentChar.profession,
+                            lvl: currentChar.lvl,
+                            world: currentChar.world || currentChar.world_name || currentWorld
+                        };
+                        console.log('[Minutnik] Postać zcachowana:', this.currentCharacter.name);
                     }
-                });
-
-                if (!resCurrent.ok) {
-                    console.error('[Minutnik] Błąd pobierania game-credentials:', resCurrent.status);
-                    return;
+                } catch (e) {
+                    console.error('[Minutnik] Błąd cachowania postaci:', e);
+                } finally {
+                    this._cachingPromise = null;
                 }
+            })();
 
-                const gameInfo = await resCurrent.json();
-
-                const res = await fetch(CONFIG.API.CHARACTERS, {
-                    credentials: 'include',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                if (!res.ok) {
-                    console.error('[Minutnik] Błąd pobierania characters:', res.status);
-                    return;
-                }
-
-                const characters = await res.json();
-                const currentChar = characters.find(c => c.id === gameInfo.characterId);
-
-                if (currentChar) {
-                    const currentWorld = window.location.hostname
-                    .replace('world-', '')
-                    .replace('.margatron.ovh', '');
-
-                    this.currentCharacter = {
-                        id: currentChar.id,
-                        name: currentChar.name,
-                        src: currentChar.src,
-                        profession: currentChar.profession,
-                        lvl: currentChar.lvl,
-                        world: currentChar.world || currentChar.world_name || currentWorld
-                    };
-
-                    console.log('[Minutnik] Postać zcachowana:', this.currentCharacter.name);
-                }
-            } catch (e) {
-                console.error('[Minutnik] Błąd cachowania postaci:', e);
-            }
+            return this._cachingPromise;
         },
 
         init() {
@@ -5299,6 +5358,7 @@
         },
 
         async checkForHeroes() {
+            if (BattleMonitor.isBusy()) return;
             const token = GraphQLManager.getToken();
             if (!token) {
                 console.log('[HeroDetector] Czekam na token');
@@ -7546,19 +7606,10 @@
 
         async fetchProfession() {
             try {
-                const resCurrent = await fetch(CONFIG.API.CURRENTCHARACTER, {
-                    credentials: 'include',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                });
-                if (!resCurrent.ok) return;
-                const gameInfo = await resCurrent.json();
-                const resChars = await fetch(CONFIG.API.CHARACTERS, {
-                    credentials: 'include',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                });
-                if (!resChars.ok) return;
-                const chars = await resChars.json();
-                const current = chars.find(c => c.id === gameInfo.characterId);
+                // Shared cache → no duplicate character-list fetch.
+                const characterId = await ApiCache.getCurrentCharacterId();
+                const chars = await ApiCache.getCharacters();
+                const current = chars.find(c => c.id === characterId);
                 if (current) {
                     this.currentProfession = current.profession;
                     console.log('[AutoArrowRefill] Profesja postaci:', current.profession);
@@ -7779,9 +7830,19 @@
             if (this.currentProfession && this.currentProfession !== 'h') return;
 
             const arrowSlot = document.querySelector('.equipment-grid [data-key="8"]');
-            const arrowItemInSlot = arrowSlot?.querySelector('[data-item], .item');
+            // If we can't even locate the arrow slot, do nothing rather than blindly refill.
+            if (!arrowSlot) return;
 
-            if (arrowItemInSlot) return;
+            // Treat the slot as occupied when the equipped arrows are represented either as
+            // the slot element itself (it carries data-item), as a child .item/[data-item],
+            // or simply as a rendered icon (img). Previously only a child [data-item]/.item
+            // was checked, so arrows shown directly on the slot element were missed and the
+            // script kept dumping more arrows from the bag even though they were equipped.
+            const slotOccupied =
+                arrowSlot.matches('[data-item], .item') ||
+                !!arrowSlot.querySelector('[data-item], .item, img');
+
+            if (slotOccupied) return;
 
             const bagItems = document.querySelectorAll('#bag .items .item[data-item], #bag [data-item].item');
 
