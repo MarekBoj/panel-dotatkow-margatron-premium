@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Panel Dodatków - Margatron Premium
 // @namespace    https://github.com/MarekBoj/panel-dotatkow-margatron-premium
-// @version      5.4.3
+// @version      5.4.4
 // @description  Panel dodatków do Margatron (AutoHeal, LootFilter, AutoCloseFight, LegendNotifications, Highlights, AutoSell, HerosDetector, Procentownik, GoldEater, AutoGrp, Hotkeys, AutoFight, Minutnik, Przedmioty na Mapie, Gracze na Mapie, Licznik Ubić, Przełącznik Postaci)
 // @author       DrMan
 // @match        https://world-retro.margatron.ovh/*
@@ -3059,7 +3059,7 @@
 
                     setTimeout(() => {
                         window.location.assign(`https://world-${targetWorld}.margatron.ovh/`);
-                    }, 2500);
+                    }, 500);
                 } else {
                     MessageCanvas.show('Błąd', `Nie udało się przełączyć: ${joinData?.message || 'Nieznany błąd'}`, '#ffd700');
                 }
@@ -5177,7 +5177,7 @@
 
                     setTimeout(() => {
                         window.location.assign(`https://world-${targetWorld}.margatron.ovh/`);
-                    }, 2500);
+                    }, 500);
                 }else {
                     MessageCanvas.show('Błąd', `Nie udało się przełączyć: ${joinData?.message || 'Nieznany błąd'}`, '#ffd700');
                 }
